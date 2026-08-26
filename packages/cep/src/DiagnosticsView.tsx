@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { collectDiagnostics, formatReport, type DiagnosticsReport, type Verdict } from "./diagnostics.js";
+import { collectDiagnostics, formatReport, type Check, type DiagnosticsReport, type Verdict } from "./diagnostics.js";
+import { probeNode, probePlayback } from "./probes.js";
 
 /**
  * The M0.5 verification surface.
@@ -27,6 +28,7 @@ const COLOR: Record<Verdict, string> = {
 
 export function DiagnosticsView({ onClose }: { onClose: () => void }) {
   const [report, setReport] = useState<DiagnosticsReport | null>(null);
+  const [deep, setDeep] = useState<Check[]>([]);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -44,9 +46,40 @@ export function DiagnosticsView({ onClose }: { onClose: () => void }) {
     void run();
   }, [run]);
 
+  /**
+   * Spikes C and E, on demand: these open a socket, touch disk and decode
+   * media, so they do not run merely because the screen is visible.
+   */
+  const runDeep = useCallback(async () => {
+    setBusy(true);
+    setCopied(false);
+    try {
+      const node = await probeNode();
+      // The VP8 control clip needs no proprietary codec. If it plays and MP4
+      // does not, the problem is the codec, not <video> inside CEP.
+      const control = await probePlayback("./selftest/control-vp8.webm", "WebM VP8 control clip");
+      setDeep([
+        ...node,
+        {
+          id: "playback-vp8",
+          label: control.label,
+          verdict: control.verdict,
+          detail: control.detail,
+        },
+      ]);
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   const copy = async () => {
     if (!report) return;
-    const text = formatReport(report);
+    const extra =
+      deep.length > 0
+        ? "\n\nDeep probes (Node, playback):\n" +
+          deep.map((c) => `[${c.verdict.toUpperCase()}] ${c.label}\n        ${c.detail}`).join("\n")
+        : "";
+    const text = formatReport(report) + extra;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -69,6 +102,9 @@ export function DiagnosticsView({ onClose }: { onClose: () => void }) {
         <button type="button" className="gml-toolbar__btn" onClick={() => void run()} disabled={busy}>
           Re-run
         </button>
+        <button type="button" className="gml-toolbar__btn" onClick={() => void runDeep()} disabled={busy}>
+          Node + playback
+        </button>
         <button type="button" className="gml-toolbar__btn" onClick={() => void copy()} disabled={!report}>
           {copied ? "Copied" : "Copy report"}
         </button>
@@ -89,6 +125,23 @@ export function DiagnosticsView({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         ))}
+
+        {deep.length > 0 && (
+          <>
+            <h3 className="gml-diag__h3">Node and playback</h3>
+            {deep.map((check) => (
+              <div key={check.id} className="gml-diag__row">
+                <span className="gml-diag__verdict" style={{ color: COLOR[check.verdict] }}>
+                  {check.verdict.toUpperCase()}
+                </span>
+                <div>
+                  <div className="gml-diag__label">{check.label}</div>
+                  <div className="gml-diag__detail">{check.detail}</div>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
 
         {report && (
           <>
@@ -111,7 +164,15 @@ export function DiagnosticsView({ onClose }: { onClose: () => void }) {
             <textarea
               className="gml-diag__text"
               readOnly
-              value={formatReport(report)}
+              value={
+                formatReport(report) +
+                (deep.length > 0
+                  ? "\n\nDeep probes (Node, playback):\n" +
+                    deep
+                      .map((c) => `[${c.verdict.toUpperCase()}] ${c.label}\n        ${c.detail}`)
+                      .join("\n")
+                  : "")
+              }
               onFocus={(e) => e.currentTarget.select()}
             />
           </>

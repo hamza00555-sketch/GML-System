@@ -16,7 +16,8 @@
     "harness": "pnpm --filter @gml/harness dev",
     "cep:install": "pnpm build && node tools/cep-dev/src/cli.js install",
     "cep:doctor": "node tools/cep-dev/src/cli.js doctor",
-    "cep:uninstall": "node tools/cep-dev/src/cli.js uninstall"
+    "cep:uninstall": "node tools/cep-dev/src/cli.js uninstall",
+    "spike:d": "node tools/spikes/spike-d.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

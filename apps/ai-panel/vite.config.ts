@@ -16,6 +16,7 @@ export default defineConfig({
     cepBundle({
       root: here,
       staticFiles: ["index.html"],
+      extraDirs: ["selftest"],
       // Concatenated in order: the ES3 helpers must be defined before the
       // host functions that use them.
       hostScripts: [
