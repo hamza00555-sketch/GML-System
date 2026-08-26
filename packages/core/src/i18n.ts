@@ -44,6 +44,7 @@ export const STRINGS = {
   clearQueue: { en: "Clear", ar: "مسح" },
   language: { en: "Language", ar: "اللغة" },
   emptyLibrary: { en: "No assets found", ar: "لا توجد عناصر" },
+  selectAnAsset: { en: "Select an asset", ar: "اختر عنصراً" },
   duration: { en: "Duration", ar: "المدة" },
   resolution: { en: "Resolution", ar: "الأبعاد" },
   version: { en: "Version", ar: "النسخة" },

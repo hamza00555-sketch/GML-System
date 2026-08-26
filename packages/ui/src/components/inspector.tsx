@@ -131,7 +131,7 @@ function AudioInspector({ asset }: { asset: AudioAsset }) {
       <dl className="gml-inspector__fields">
         <Field
           label={t("library")}
-          value={[CATEGORY_LABELS.audio[locale], asset.kind, ...asset.tags].filter(Boolean).join(" · ")}
+          value={[...new Set([CATEGORY_LABELS.audio[locale], asset.kind, ...asset.tags].filter(Boolean))].join(" · ")}
         />
         <Field label={t("duration")} value={duration(asset.duration)} />
         <Field
@@ -156,9 +156,14 @@ function AudioInspector({ asset }: { asset: AudioAsset }) {
 
 /** Branches on assetType so an audio asset never renders motion metadata. */
 export function Inspector() {
+  const { t } = useI18n();
   const { selected } = useSelection();
   if (!selected) {
-    return <aside className="gml-inspector gml-inspector--empty" data-testid="inspector" />;
+    return (
+      <aside className="gml-inspector gml-inspector--empty" data-testid="inspector">
+        <p className="gml-inspector__hint">{t("selectAnAsset")}</p>
+      </aside>
+    );
   }
   return (
     <aside className="gml-inspector" data-testid="inspector">

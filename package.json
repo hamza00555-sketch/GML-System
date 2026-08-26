@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "build": "pnpm -r --filter \"./packages/*\" run build",
+    "build": "pnpm -r run build",
     "harness": "pnpm --filter @gml/harness dev"
   },
   "devDependencies": {

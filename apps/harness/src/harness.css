@@ -1,0 +1,76 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #141414;
+  color: #e2e2e2;
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+}
+
+.harness { display: flex; block-size: 100vh; }
+
+.harness__controls {
+  inline-size: 268px;
+  flex: 0 0 268px;
+  padding: 16px;
+  border-inline-end: 1px solid #2a2a2a;
+  overflow-y: auto;
+}
+.harness__title { font-size: 14px; margin: 0 0 6px; }
+.harness__blurb { color: #8a8a8a; font-size: 11px; line-height: 1.5; margin: 0 0 16px; }
+.harness__label {
+  display: block;
+  color: #6a6a6a;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 16px 0 6px;
+}
+.harness__row { display: flex; gap: 4px; flex-wrap: wrap; }
+.harness__btn {
+  background: #252525;
+  border: 1px solid #383838;
+  border-radius: 3px;
+  color: #9a9a9a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+.harness__btn:hover { color: #e2e2e2; }
+.harness__btn[data-active] { background: #41d37e; border-color: #41d37e; color: #06140e; }
+.harness__range { inline-size: 100%; accent-color: #41d37e; }
+
+.harness__log { list-style: none; margin: 0; padding: 0; font-size: 11px; }
+.harness__log li {
+  border-block-end: 1px solid #222;
+  padding: 5px 0;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.harness__log code { color: #41d37e; }
+.harness__log span { color: #8a8a8a; word-break: break-all; }
+.harness__log em { color: #555; margin-inline-start: auto; font-style: normal; }
+.harness__logempty { color: #555; }
+
+.harness__stage {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  background:
+    repeating-linear-gradient(45deg, #171717 0 10px, #191919 10px 20px);
+}
+.harness__panel {
+  block-size: 100%;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  overflow: hidden;
+  /* The real ResizeObserver measures this, so mode changes are genuine. */
+  resize: horizontal;
+  min-inline-size: 180px;
+}

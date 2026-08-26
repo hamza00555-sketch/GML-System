@@ -157,7 +157,8 @@ export function AudioCard({ asset, density = "grid" }: { asset: AudioAsset; dens
       <div className="gml-card__row">
         <span className="gml-card__duration">{duration(asset.duration)}</span>
         <span className="gml-card__tags">
-          {[asset.kind, ...asset.tags].filter(Boolean).slice(0, 2).join(" · ")}
+          {/* kind is frequently repeated in tags — show each label once. */}
+          {[...new Set([asset.kind, ...asset.tags].filter(Boolean))].slice(0, 2).join(" · ")}
         </span>
       </div>
     </article>

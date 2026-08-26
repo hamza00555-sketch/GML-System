@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "@gml/core": ["../../packages/core/src/index.ts"],
+      "@gml/storage": ["../../packages/storage/src/index.ts"],
+      "@gml/ui": ["../../packages/ui/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*", "vite.config.ts"]
+}

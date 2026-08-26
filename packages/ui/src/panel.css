@@ -192,6 +192,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   gap: var(--space-3);
+  /* Audio cards are shorter than motion cards; stretching them to match
+     leaves a dead gap under the waveform. */
+  align-items: start;
 }
 .gml-list { display: flex; flex-direction: column; gap: var(--space-1); }
 .gml-empty { color: var(--text-3); text-align: center; padding: var(--space-4); }
@@ -229,8 +232,16 @@
 .gml-card[data-density="list"] .gml-card__media { inline-size: 44px; flex: 0 0 44px; border-radius: var(--radius-sm); }
 .gml-card[data-density="list"] .gml-card__meta { flex: 1 1 auto; padding: 0; }
 
-.gml-card__audiorow { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); }
+.gml-card__audiorow { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); min-inline-size: 0; }
+.gml-card__audiorow .gml-card__name { flex: 1 1 auto; min-inline-size: 0; }
 .gml-card--audio .gml-card__row { padding: 0 var(--space-2) var(--space-2); }
+
+/* In list density an audio card is one row: play, name, waveform, meta. */
+.gml-card--audio[data-density="list"] { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); }
+.gml-card--audio[data-density="list"] .gml-card__audiorow { flex: 1 1 auto; padding: 0; }
+.gml-card--audio[data-density="list"] .gml-wave { flex: 0 0 56px; inline-size: 56px; padding-inline: 0; }
+.gml-card--audio[data-density="list"] .gml-card__row { flex: 0 0 auto; padding: 0; gap: var(--space-2); }
+.gml-card--audio[data-density="list"] .gml-card__tags { display: none; }
 
 .gml-fav {
   position: absolute;
@@ -303,6 +314,8 @@
   background: var(--surface-1);
 }
 .gml-inspector__body { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.gml-inspector--empty { display: grid; place-items: center; }
+.gml-inspector__hint { color: var(--text-3); font-size: var(--fs-sm); }
 .gml-inspector__preview { aspect-ratio: 16 / 9; background: var(--surface-2); border-radius: var(--radius-md); overflow: hidden; }
 .gml-inspector__video { inline-size: 100%; block-size: 100%; object-fit: cover; display: block; }
 .gml-inspector__audiorow { display: flex; align-items: center; gap: var(--space-2); }
