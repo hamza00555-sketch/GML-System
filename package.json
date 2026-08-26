@@ -1,0 +1,31 @@
+{
+  "name": "gml-system",
+  "private": true,
+  "version": "0.1.0",
+  "description": "GML — GOSI Motion Library. Shared motion asset system for After Effects and Illustrator.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --build --verbose",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "build": "pnpm -r --filter \"./packages/*\" run build",
+    "harness": "pnpm --filter @gml/harness dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.17.0",
+    "jsdom": "^30.0.1",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.68.0",
+    "vitest": "^2.1.8"
+  }
+}
