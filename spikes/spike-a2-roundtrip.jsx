@@ -13,6 +13,34 @@
  * Run: File > Scripts > Run Script File…
  */
 (function () {
+    /**
+     * A native alert() box is not reliably copyable (Windows in particular
+     * gives no text selection at all), so the final report is shown in a
+     * ScriptUI dialog instead: a read-only, pre-selected text field. Ctrl+C /
+     * Cmd+C copies the whole thing the moment the dialog opens.
+     */
+    function showReport(title, text) {
+        var win = new Window("dialog", title);
+        win.orientation = "column";
+        win.alignChildren = ["fill", "fill"];
+
+        var box = win.add("edittext", undefined, text, { multiline: true, readonly: true, scrolling: true });
+        box.preferredSize = [640, 460];
+
+        var row = win.add("group");
+        row.alignment = "fill";
+        var hint = row.add("statictext", undefined, "Text is pre-selected — press Ctrl+C (Cmd+C on macOS) to copy.");
+        hint.alignment = ["left", "center"];
+        var closeBtn = row.add("button", undefined, "Close", { name: "ok" });
+        closeBtn.alignment = ["right", "center"];
+
+        win.center();
+        box.active = true;
+        try { box.textselection = text; } catch (eSel) { /* select-all not supported on every platform */ }
+
+        win.show();
+    }
+
     var lines = [];
     var results = [];
     function say(text) { lines[lines.length] = text; }
@@ -280,7 +308,7 @@
         out.write(report);
         out.close();
         report += "\n\nSaved to: " + out.fsName;
-    } catch (eWrite) { /* the alert still carries the result */ }
+    } catch (eWrite) { /* the dialog still carries the result */ }
 
-    alert(report);
+    showReport("GML Spike A2 — Publish Round Trip", report);
 })();

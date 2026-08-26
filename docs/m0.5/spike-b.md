@@ -17,7 +17,9 @@ proves that ordering works before M4 is written on top of it.
 1. Open **Illustrator**. No document needs to be open.
 2. `File → Scripts → Other Script…`
 3. Choose `spikes/spike-b-group-embed.jsx` from the repository.
-4. Read the alert, and find `gml-spike-b-report.txt` on your Desktop.
+4. A dialog opens with the report text already selected — press `Ctrl+C`
+   (`Cmd+C` on macOS) to copy it, then send it to me. `gml-spike-b-report.txt`
+   is also written to your Desktop.
 
 ---
 

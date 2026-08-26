@@ -26,8 +26,9 @@ opens nothing, saves nothing and modifies nothing.
    with a mix of video, stills, an image sequence, and audio.
 2. `File → Scripts → Run Script File…`
 3. Choose `spikes/spike-a1-probe-READONLY.jsx`.
-4. Read the alert. A copy is written next to your project as
-   `gml-spike-a1-report.txt`.
+4. A dialog opens with the report text already selected — press `Ctrl+C`
+   (`Cmd+C` on macOS) to copy it, then send it to me. A copy is also written
+   next to your project as `gml-spike-a1-report.txt`.
 5. **Repeat on two or three different projects.** One project proves very little.
 
 ## Expected result
@@ -83,7 +84,9 @@ unsure about, and that is the point.
 3. Choose `spikes/spike-a2-roundtrip.jsx`.
 4. Confirm the prompt.
 5. Wait — it opens and closes several projects. Do not touch AE while it runs.
-6. Read the alert; `gml-spike-a2-report.txt` is written to your Desktop.
+6. A dialog opens with the report text already selected — press `Ctrl+C`
+   (`Cmd+C` on macOS) to copy it, then send it to me. `gml-spike-a2-report.txt`
+   is also written to your Desktop.
 
 ## Expected result
 
