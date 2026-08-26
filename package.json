@@ -2,7 +2,7 @@
   "name": "gml-system",
   "private": true,
   "version": "0.1.0",
-  "description": "GML — GOSI Motion Library. Shared motion asset system for After Effects and Illustrator.",
+  "description": "GML \u2014 GOSI Motion Library. Shared motion asset system for After Effects and Illustrator.",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -13,7 +13,10 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "build": "pnpm -r run build",
-    "harness": "pnpm --filter @gml/harness dev"
+    "harness": "pnpm --filter @gml/harness dev",
+    "cep:install": "pnpm build && node tools/cep-dev/src/cli.js install",
+    "cep:doctor": "node tools/cep-dev/src/cli.js doctor",
+    "cep:uninstall": "node tools/cep-dev/src/cli.js uninstall"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

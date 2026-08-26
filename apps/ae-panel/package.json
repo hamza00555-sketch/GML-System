@@ -1,0 +1,20 @@
+{
+  "name": "@gml/ae-panel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "vite build" },
+  "dependencies": {
+    "@gml/cep": "workspace:*",
+    "@gml/core": "workspace:*",
+    "@gml/storage": "workspace:*",
+    "@gml/ui": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@gml/cep-dev": "workspace:*",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}

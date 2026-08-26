@@ -54,6 +54,68 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)(jsdom@30.0.1)
 
+  apps/ae-panel:
+    dependencies:
+      '@gml/cep':
+        specifier: workspace:*
+        version: link:../../packages/cep
+      '@gml/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@gml/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@gml/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@gml/cep-dev':
+        specifier: workspace:*
+        version: link:../../tools/cep-dev
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@5.4.21(@types/node@22.20.1))
+      vite:
+        specifier: ^5.4.11
+        version: 5.4.21(@types/node@22.20.1)
+
+  apps/ai-panel:
+    dependencies:
+      '@gml/cep':
+        specifier: workspace:*
+        version: link:../../packages/cep
+      '@gml/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@gml/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@gml/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@gml/cep-dev':
+        specifier: workspace:*
+        version: link:../../tools/cep-dev
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@5.4.21(@types/node@22.20.1))
+      vite:
+        specifier: ^5.4.11
+        version: 5.4.21(@types/node@22.20.1)
+
   apps/harness:
     dependencies:
       '@gml/core':
@@ -78,6 +140,21 @@ importers:
       vite:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@22.20.1)
+
+  packages/cep:
+    dependencies:
+      '@gml/core':
+        specifier: workspace:*
+        version: link:../core
+      '@gml/ui':
+        specifier: workspace:*
+        version: link:../ui
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
 
   packages/core:
     dependencies:
@@ -111,6 +188,8 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+
+  tools/cep-dev: {}
 
 packages:
 

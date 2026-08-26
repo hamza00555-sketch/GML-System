@@ -374,3 +374,60 @@
 .gml-panel[data-mode="compact"] .gml-body { padding: var(--space-1); }
 .gml-panel[data-mode="compact"] .gml-dock { padding: var(--space-2); }
 .gml-panel[data-mode="standard"] .gml-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+
+/* ---- diagnostics overlay (M0.5 verification) ---- */
+.gml-diag {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-0);
+}
+.gml-diag__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--divider);
+  background: var(--surface-1);
+  flex-wrap: wrap;
+}
+.gml-diag__summary { color: var(--text-2); font-size: var(--fs-sm); margin-inline-end: auto; }
+.gml-diag__body { flex: 1 1 auto; overflow-y: auto; padding: var(--space-3); }
+.gml-diag__row { display: flex; gap: var(--space-2); padding-block: var(--space-1); border-block-end: 1px solid var(--divider); }
+.gml-diag__verdict { flex: 0 0 44px; font-size: var(--fs-sm); font-weight: 700; }
+.gml-diag__label { color: var(--text-1); }
+.gml-diag__detail { color: var(--text-3); font-size: var(--fs-sm); word-break: break-word; }
+.gml-diag__h3 { color: var(--text-2); font-size: var(--fs-sm); margin: var(--space-3) 0 var(--space-1); text-transform: uppercase; letter-spacing: 0.06em; }
+.gml-diag__table { inline-size: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.gml-diag__table td { padding: 2px var(--space-1); border-block-end: 1px solid var(--divider); }
+.gml-diag__text {
+  inline-size: 100%;
+  block-size: 180px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10px;
+  padding: var(--space-2);
+  resize: vertical;
+}
+.gml-diagbtn {
+  position: absolute;
+  inset-block-end: 6px;
+  inset-inline-end: 6px;
+  z-index: 15;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  padding: 2px 6px;
+  opacity: 0.7;
+}
+.gml-diagbtn:hover { opacity: 1; color: var(--text-1); }
+.gml-panelhost { position: relative; block-size: 100%; inline-size: 100%; }

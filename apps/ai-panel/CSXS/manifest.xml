@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GML panel for Illustrator.
+
+  RequiredRuntime is CSXS 9.0 rather than 11/12 so the panel loads on any host
+  from CC 2019 onward; a newer requirement would silently filter it out on
+  older installs. Node is enabled because the storage layer needs fs and
+  network access that the browser sandbox does not provide.
+-->
+<ExtensionManifest Version="9.0"
+                   ExtensionBundleId="com.gosi.gml.ai"
+                   ExtensionBundleVersion="0.1.0"
+                   ExtensionBundleName="GML"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ExtensionList>
+    <Extension Id="com.gosi.gml.ai" Version="0.1.0" />
+  </ExtensionList>
+
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="ILST" Version="[23.0,99.9]" />
+    </HostList>
+    <LocaleList>
+      <Locale Code="All" />
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="9.0" />
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+
+  <DispatchInfoList>
+    <Extension Id="com.gosi.gml.ai">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./index.html</MainPath>
+          <ScriptPath>./host/index.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+            <Parameter>--allow-file-access</Parameter>
+            <Parameter>--allow-file-access-from-files</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>GML</Menu>
+          <Geometry>
+            <Size><Height>620</Height><Width>420</Width></Size>
+            <MinSize><Height>240</Height><Width>180</Width></MinSize>
+            <MaxSize><Height>4000</Height><Width>4000</Width></MaxSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

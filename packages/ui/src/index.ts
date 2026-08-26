@@ -13,3 +13,4 @@ export * from "./components/nav.js";
 export * from "./components/inspector.js";
 export * from "./components/dropzone.js";
 export * from "./components/toolbar.js";
+export * from "./placeholder.js";

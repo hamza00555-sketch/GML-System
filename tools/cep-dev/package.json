@@ -1,0 +1,12 @@
+{
+  "name": "@gml/cep-dev",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./vite-plugin": "./src/vite-plugin.js"
+  },
+  "bin": { "gml-cep": "./src/cli.js" }
+}

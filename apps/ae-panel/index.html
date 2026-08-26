@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self' data: blob: file:; img-src 'self' data: blob: file:; media-src 'self' data: blob: file:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'" />
+    <title>GML</title>
+    <link rel="stylesheet" href="./assets/panel.css" />
+  </head>
+  <body>
+    <script>
+      // CEP with --enable-nodejs injects `module` and `exports` into the global
+      // scope. Bundles that feature-detect CommonJS then take that path and
+      // never attach to window, leaving a blank panel. Hide them while the
+      // bundle boots and restore them for any later Node use.
+      (function () {
+        if (typeof module === "object" && module !== null) {
+          window.__gmlModule = module;
+          window.module = undefined;
+        }
+        if (typeof exports === "object" && exports !== null) {
+          window.__gmlExports = exports;
+          window.exports = undefined;
+        }
+      })();
+    </script>
+    <div id="root"></div>
+    <script src="./assets/panel.js"></script>
+    <script>
+      (function () {
+        if (window.__gmlModule) { window.module = window.__gmlModule; }
+        if (window.__gmlExports) { window.exports = window.__gmlExports; }
+      })();
+    </script>
+  </body>
+</html>
