@@ -1,0 +1,54 @@
+/*
+ * GML design tokens.
+ *
+ * Targets CEP's Chromium: CEP 11.1 is Chromium 88, CEP 12 is Chromium 99.
+ * That rules out container queries, :has() and subgrid — the adaptive layout is
+ * driven by ResizeObserver writing [data-mode] instead. Logical properties are
+ * used throughout so the Arabic RTL layout needs no duplicated rules; logical
+ * border-radius (Chromium 89) is deliberately avoided.
+ */
+:root {
+  --surface-0: #1e1e1e;
+  --surface-1: #252525;
+  --surface-2: #2e2e2e;
+  --surface-3: #363636;
+  --border: #383838;
+  --divider: #141414;
+
+  --text-1: #e2e2e2;
+  --text-2: #9a9a9a;
+  --text-3: #6a6a6a;
+
+  /* Reserved for selection, GML SAFE, an active drop zone, and Apply/Place. */
+  --accent: #41d37e;
+  --accent-dim: #2a8a53;
+  --accent-fg: #06140e;
+
+  --warn: #e0a33a;
+  --danger: #e06c5a;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+
+  --dur-hover: 140ms;
+  --dur-layout: 180ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  --font: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-ar: "Segoe UI", "Geeza Pro", "Noto Naskh Arabic", Tahoma, sans-serif;
+  --fs-sm: 11px;
+  --fs-md: 12px;
+  --fs-lg: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-hover: 0ms;
+    --dur-layout: 0ms;
+  }
+}

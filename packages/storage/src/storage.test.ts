@@ -1,17 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { MANIFEST_EXCLUDED, motionFixture, sampleLibrary } from "@gml/core";
-import { buildManifest, digestsOf, verifyPackage } from "./hash.js";
+import { buildManifest, verifyPackage } from "./hash.js";
 import { MemoryPackageCache, cacheKey } from "./cache.js";
 import { MockLibraryProvider } from "./mock-provider.js";
 import { PublishVerificationError, verifyStagedUpload } from "./provider.js";
-import type { LocalFile } from "./provider.js";
 
 const bytes = (s: string) => new TextEncoder().encode(s);
-
-function localFile(path: string, body: string): LocalFile {
-  const data = bytes(body);
-  return { path, data, ...digestsOf(data) };
-}
 
 describe("manifest building", () => {
   it("never includes meta.json — it carries the manifest", () => {
