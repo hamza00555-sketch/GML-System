@@ -9,6 +9,7 @@ import {
   isSupportedPlatform,
   userExtensionsDir,
 } from "./paths.js";
+import { debugFileFor } from "./vite-plugin.js";
 
 const PANELS = [
   { id: "com.gosi.gml.ae", dir: "ae-panel", folder: "com.gosi.gml.ae", host: "AEFT", app: "After Effects" },
@@ -20,20 +21,19 @@ const warn = (m) => console.log(`  ⚠ ${m}`);
 const fail = (m) => console.log(`  ✕ ${m}`);
 const step = (m) => console.log(`\n${m}`);
 
-/** Writes the remote-debugging descriptor CEP reads from the extension root. */
-function writeDebugFile(target, extensionId, host) {
-  const port = DEBUG_PORTS[host];
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<ExtensionList>
-    <Extension Id="${extensionId}">
-        <HostList>
-            <Host Name="${host}" Port="${port}"/>
-        </HostList>
-    </Extension>
-</ExtensionList>
-`;
-  fs.writeFileSync(path.join(target, ".debug"), xml, "utf8");
-  return port;
+/**
+ * The build already writes .debug into dist (see cepBundle), so this only
+ * repairs an install whose dist predates that. It never disagrees with the
+ * build: both derive the file from the same manifest.
+ */
+function ensureDebugFile(target, host) {
+  const file = path.join(target, ".debug");
+  if (!fs.existsSync(file)) {
+    const manifest = fs.readFileSync(path.join(target, "CSXS", "manifest.xml"), "utf8");
+    const xml = debugFileFor(manifest);
+    if (xml) fs.writeFileSync(file, xml, "utf8");
+  }
+  return DEBUG_PORTS[host];
 }
 
 /**
@@ -129,7 +129,7 @@ export function install({ repoRoot }) {
 
     const target = path.join(extensionsDir, panel.folder);
     const mode = linkExtension(source, target);
-    const port = writeDebugFile(target, panel.id, panel.host);
+    const port = ensureDebugFile(target, panel.host);
     ok(`${panel.app} → ${panel.folder} (${mode}, debug port ${port})`);
     installed.push({ ...panel, target, port, mode });
   }

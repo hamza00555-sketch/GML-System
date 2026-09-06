@@ -6,7 +6,10 @@
   "main": "./src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./vite-plugin": "./src/vite-plugin.js"
+    "./vite-plugin": {
+      "types": "./src/vite-plugin.d.ts",
+      "default": "./src/vite-plugin.js"
+    }
   },
   "bin": { "gml-cep": "./src/cli.js" }
 }

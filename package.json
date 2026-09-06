@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "typecheck": "tsc --build --verbose",
+    "typecheck": "tsc --build && tsc -p apps/harness && tsc -p apps/ae-panel && tsc -p apps/ai-panel",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",

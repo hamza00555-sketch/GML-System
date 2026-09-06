@@ -48,11 +48,18 @@ function gmlGetEnvironment() {
     try {
         // app.fonts arrived in After Effects 24; older versions report nothing,
         // which the panel treats as "unknown" rather than "missing".
+        //
+        // allFonts is documented as an array of arrays — one inner array per
+        // font family — so each entry must be unwrapped. Reading postScriptName
+        // off the family array would silently yield an empty list.
         if (app.fonts && app.fonts.allFonts) {
             var all = app.fonts.allFonts;
             for (var i = 0; i < all.length; i++) {
-                var name = all[i].postScriptName;
-                if (name) { fonts[fonts.length] = String(name); }
+                var family = all[i] instanceof Array ? all[i] : [all[i]];
+                for (var k = 0; k < family.length; k++) {
+                    var name = family[k] && family[k].postScriptName;
+                    if (name) { fonts[fonts.length] = String(name); }
+                }
             }
         }
     } catch (e) { /* leave fonts empty — unknown, not missing */ }

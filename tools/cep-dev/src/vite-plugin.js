@@ -1,5 +1,29 @@
 import fs from "node:fs";
 import path from "node:path";
+import { DEBUG_PORTS } from "./paths.js";
+
+/**
+ * The remote-debugging descriptor CEP reads from the extension root. It is
+ * derived from the manifest so the two can never disagree, and written at
+ * build time because Vite empties dist on every build — a .debug written only
+ * by the installer would vanish on the first rebuild in symlink mode.
+ */
+export function debugFileFor(manifestXml) {
+  const id = /<Extension\s+Id="([^"]+)"/.exec(manifestXml)?.[1];
+  const host = /<Host\s+Name="([^"]+)"/.exec(manifestXml)?.[1];
+  if (!id || !host) return null;
+  const port = DEBUG_PORTS[host];
+  if (!port) return null;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionList>
+    <Extension Id="${id}">
+        <HostList>
+            <Host Name="${host}" Port="${port}"/>
+        </HostList>
+    </Extension>
+</ExtensionList>
+`;
+}
 
 /**
  * Assembles a CEP extension bundle around Vite's output.
@@ -18,11 +42,14 @@ export function cepBundle({ root, hostScripts = [], extraDirs = [], staticFiles 
     closeBundle() {
       const outDir = path.join(root, "dist");
 
-      // 1. manifest
+      // 1. manifest, plus the .debug descriptor derived from it
       const manifestSrc = path.join(root, "CSXS", "manifest.xml");
       const manifestDest = path.join(outDir, "CSXS", "manifest.xml");
       fs.mkdirSync(path.dirname(manifestDest), { recursive: true });
       fs.copyFileSync(manifestSrc, manifestDest);
+
+      const debug = debugFileFor(fs.readFileSync(manifestSrc, "utf8"));
+      if (debug) fs.writeFileSync(path.join(outDir, ".debug"), debug, "utf8");
 
       // 2. one concatenated ExtendScript file
       if (hostScripts.length > 0) {

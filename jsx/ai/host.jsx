@@ -74,8 +74,9 @@ function gmlSetTagsVisible(payload) {
 
         var visible = payload && payload.visible === true;
         layer.visible = visible;
-        // Keeps badges out of any export even if someone re-enables the layer.
-        layer.printable = visible;
+        // Never printable, shown or hidden: badges are screen-only guidance
+        // and must not reach a PDF export even while they are visible.
+        layer.printable = false;
 
         return gmlOk({ changed: true, visible: layer.visible, layer: GML_TAGS_LAYER });
     } catch (e) {
