@@ -3,11 +3,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { install } from "./install.js";
 import { doctor, uninstall } from "./doctor.js";
+import { packageExtensions } from "./package.js";
 
 const repoRoot = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 const command = process.argv[2] ?? "install";
 
-const commands = { install, doctor, uninstall };
+const commands = { install, doctor, uninstall, package: packageExtensions };
 const run = commands[command];
 
 if (!run) {

@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 
 export default [
   // jsx/ is ExtendScript (ES3) and is not parseable as modern JS.
-  { ignores: ["**/dist/**", "**/node_modules/**", "jsx/**"] },
+  { ignores: ["**/dist/**", "**/node_modules/**", "release/**", "jsx/**", "spikes/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
