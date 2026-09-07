@@ -76,7 +76,18 @@ function MotionInspector({ asset }: { asset: MotionAsset }) {
         {asset.tags.length > 0 && <Field label="Tags" value={asset.tags.join(" · ")} />}
         <Field label={t("duration")} value={duration(asset.duration)} />
         <Field label={t("resolution")} value={`${asset.width}×${asset.height} · ${asset.fps} fps`} />
-        <Field label={t("version")} value={asset.version} />
+        <Field
+          label={t("version")}
+          value={asset.status === "draft" ? `${asset.version} · ${t("draft")}` : asset.version}
+        />
+        <Field
+          label={t("footage")}
+          value={asset.dependencies.footage === "bundled" ? t("footageBundled") : t("footageExternal")}
+        />
+        {asset.dependencies.fonts.length > 0 && <Field label="Fonts" value={asset.dependencies.fonts.join(", ")} />}
+        {asset.dependencies.plugins.length > 0 && (
+          <Field label="Plugins" value={asset.dependencies.plugins.map((p) => p.name).join(", ")} />
+        )}
         <Field label={t("lastUpdate")} value={asset.updatedAt.slice(0, 10)} />
       </dl>
 

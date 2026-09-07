@@ -15,6 +15,8 @@ export interface PanelRootProps {
   locale?: Locale;
   /** Test seam so a layout can be rendered without a ResizeObserver. */
   initialWidth?: number;
+  /** Bump to re-read the library — the host app does this after publishing. */
+  reloadToken?: number;
 }
 
 function PanelShell({ initialWidth }: { initialWidth?: number }) {
@@ -47,11 +49,11 @@ function PanelShell({ initialWidth }: { initialWidth?: number }) {
   );
 }
 
-export function PanelRoot({ bridge, provider, locale, initialWidth }: PanelRootProps) {
+export function PanelRoot({ bridge, provider, locale, initialWidth, reloadToken }: PanelRootProps) {
   return (
     <I18nProvider locale={locale}>
       <HostBridgeProvider bridge={bridge}>
-        <LibraryStateProvider provider={provider}>
+        <LibraryStateProvider provider={provider} reloadToken={reloadToken}>
           <PlaybackProvider>
             <SelectionProvider>
               <PanelShell initialWidth={initialWidth} />

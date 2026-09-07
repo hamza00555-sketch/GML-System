@@ -31,6 +31,7 @@ export default defineConfig({
     alias: [
       { find: /^@gml\/core$/, replacement: entry("core") },
       { find: /^@gml\/storage$/, replacement: entry("storage") },
+      { find: /^@gml\/preflight$/, replacement: entry("preflight") },
       { find: /^@gml\/ui$/, replacement: entry("ui") },
       { find: /^@gml\/cep$/, replacement: entry("cep") },
       { find: /^@gml\/core\/(.*)$/, replacement: `${srcDir("core")}/$1` },

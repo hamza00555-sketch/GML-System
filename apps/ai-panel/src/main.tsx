@@ -1,44 +1,86 @@
-import { StrictMode, useState } from "react";
+import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { sampleLibrary } from "@gml/core";
-import { MockLibraryProvider } from "@gml/storage";
+import { MockLibraryProvider, type FolderLibraryProvider } from "@gml/storage";
 import { AI_CAPABILITIES, PanelRoot } from "@gml/ui";
-import { CepHostBridge, DiagnosticsView } from "@gml/cep";
+import {
+  CepHostBridge,
+  DiagnosticsView,
+  LibrarySetupView,
+  openLibrary,
+  panelNode,
+  readConfig,
+  writeConfig,
+  type GmlConfig,
+} from "@gml/cep";
 import "@gml/ui/tokens.css";
 import "@gml/ui/panel.css";
 
 /**
- * M0.5 panel shell.
- *
- * The library is still the mock seed — the Drive provider arrives in M1. What
- * is real here is the host bridge: target, environment and the tag tools all
- * go through ExtendScript, which is what the verification pass needs to prove.
+ * Illustrator panel. Same library folder as After Effects (the config is
+ * shared per machine); placing artwork waits on Spike B, so the primary
+ * action reports rather than places.
  */
-const assets = sampleLibrary();
-const provider = new MockLibraryProvider({ seed: assets });
+const node = panelNode();
 
-const errors: string[] = [];
 const bridge = new CepHostBridge({
   capabilities: AI_CAPABILITIES,
-  assets,
   onError: (context, error) => {
-    const message = `[gml] ${context}: ${error instanceof Error ? error.message : String(error)}`;
-    errors.push(message);
-    console.error(message);
+    console.error(`[gml] ${context}: ${error instanceof Error ? error.message : String(error)}`);
   },
 });
 
+type View = "library" | "setup" | "diagnostics";
+
 function Panel() {
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [config, setConfig] = useState<GmlConfig>(() => readConfig(node));
+  const [view, setView] = useState<View>(() => (config.libraryRoot && node ? "library" : "setup"));
+
+  const library = useMemo<FolderLibraryProvider | null>(() => {
+    if (!node || !config.libraryRoot) return null;
+    try {
+      return openLibrary(node, config.libraryRoot);
+    } catch (error) {
+      console.error("[gml] could not open library", error);
+      return null;
+    }
+  }, [config.libraryRoot]);
+
+  const provider = useMemo(() => library ?? new MockLibraryProvider(), [library]);
+
+  useEffect(() => {
+    bridge.attachLibrary(library);
+  }, [library]);
+
+  const chooseLibrary = (root: string) => {
+    const next = { ...config, libraryRoot: root };
+    writeConfig(node, next);
+    setConfig(next);
+    setView("library");
+  };
+
   return (
     <div className="gml-panelhost">
       <PanelRoot bridge={bridge} provider={provider} />
-      {showDiagnostics ? (
-        <DiagnosticsView onClose={() => setShowDiagnostics(false)} />
-      ) : (
-        <button type="button" className="gml-diagbtn" onClick={() => setShowDiagnostics(true)}>
-          Diagnostics
-        </button>
+
+      {view === "setup" && (
+        <LibrarySetupView
+          node={node}
+          current={config.libraryRoot}
+          onChoose={chooseLibrary}
+          onClose={library ? () => setView("library") : undefined}
+        />
+      )}
+      {view === "diagnostics" && <DiagnosticsView onClose={() => setView("library")} />}
+
+      {view === "library" && (
+        <div className="gml-corner">
+          <button type="button" className="gml-diagbtn" onClick={() => setView("setup")} title="Library folder">
+            ⚙ Library
+          </button>
+          <button type="button" className="gml-diagbtn" onClick={() => setView("diagnostics")}>
+            Diagnostics
+          </button>
+        </div>
       )}
     </div>
   );

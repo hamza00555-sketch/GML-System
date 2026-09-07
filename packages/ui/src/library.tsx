@@ -74,9 +74,12 @@ async function loadAll(provider: LibraryProvider): Promise<GmlAsset[]> {
 
 export function LibraryStateProvider({
   provider,
+  reloadToken = 0,
   children,
 }: {
   provider: LibraryProvider;
+  /** Bump to re-read the library, e.g. after the panel itself published. */
+  reloadToken?: number;
   children: ReactNode;
 }) {
   const host = useHost();
@@ -88,7 +91,7 @@ export function LibraryStateProvider({
   const [favorites, setFavorites] = useState<ReadonlySet<string>>(() => new Set(readList(FAVORITES_KEY)));
   const [recent, setRecent] = useState<readonly string[]>(() => readList(RECENT_KEY));
   const [environment, setEnvironment] = useState<InstalledEnvironment>({});
-  const [reloadToken, setReloadToken] = useState(0);
+  const [internalReload, setReloadToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +112,7 @@ export function LibraryStateProvider({
     return () => {
       cancelled = true;
     };
-  }, [provider, reloadToken]);
+  }, [provider, internalReload, reloadToken]);
 
   useEffect(() => {
     let cancelled = false;

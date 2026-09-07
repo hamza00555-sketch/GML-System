@@ -431,3 +431,61 @@
 }
 .gml-diagbtn:hover { opacity: 1; color: var(--text-1); }
 .gml-panelhost { position: relative; block-size: 100%; inline-size: 100%; }
+
+/* ---- draft tag ---- */
+.gml-tag {
+  display: inline-block;
+  margin-inline-start: var(--space-1);
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.gml-tag--draft { background: var(--surface-2); color: var(--warn); border: 1px solid var(--border); }
+
+/* ---- forms (library setup, publish) ---- */
+.gml-form { display: flex; flex-direction: column; gap: var(--space-1); }
+.gml-form__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: 2px;
+}
+.gml-form__row > span:first-child { flex: 0 0 88px; color: var(--text-2); font-size: var(--fs-sm); }
+.gml-form__grow { flex: 1 1 auto; min-inline-size: 0; }
+.gml-form__input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font: inherit;
+  padding: 4px var(--space-2);
+}
+.gml-form__input:focus { outline: none; border-color: var(--accent-dim); }
+.gml-form__input:disabled { opacity: 0.5; }
+.gml-form__mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: var(--fs-sm); }
+.gml-form__file { flex: 1 1 auto; min-inline-size: 0; color: var(--text-2); font-size: var(--fs-sm); }
+.gml-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+}
+.gml-form code { color: var(--text-1); font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+/* ---- corner buttons (settings, diagnostics) ---- */
+.gml-corner {
+  position: absolute;
+  inset-block-end: 6px;
+  inset-inline-end: 6px;
+  z-index: 15;
+  display: flex;
+  gap: 4px;
+}
+.gml-corner .gml-diagbtn { position: static; }

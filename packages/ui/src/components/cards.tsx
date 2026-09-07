@@ -37,7 +37,7 @@ function useCardBehaviour(asset: GmlAsset) {
 }
 
 export function MotionCard({ asset, density = "grid" }: { asset: MotionAsset; density?: CardDensity }) {
-  const { nameOf, duration } = useI18n();
+  const { t, nameOf, duration } = useI18n();
   const host = useHost();
   const playback = usePlayback();
   const behaviour = useCardBehaviour(asset);
@@ -54,8 +54,9 @@ export function MotionCard({ asset, density = "grid" }: { asset: MotionAsset; de
   );
 
   const posterUrl = host.resolveUrl(asset, asset.poster);
-  // preview.gif is the guaranteed fallback: it needs no codec at all.
-  const videoUrl = host.resolveUrl(asset, failed ? asset.previewGif : asset.preview);
+  // preview.gif is the guaranteed fallback: it needs no codec at all. Without
+  // one, a failed decode simply leaves the poster showing.
+  const videoUrl = host.resolveUrl(asset, failed ? (asset.previewGif ?? asset.poster) : asset.preview);
 
   return (
     <article
@@ -97,7 +98,14 @@ export function MotionCard({ asset, density = "grid" }: { asset: MotionAsset; de
           {nameOf(asset)}
         </span>
         <span className="gml-card__row">
-          <span className="gml-card__duration">{duration(asset.duration)}</span>
+          <span className="gml-card__duration">
+            {duration(asset.duration)}
+            {asset.status === "draft" && (
+              <span className="gml-tag gml-tag--draft" data-testid="draft-tag">
+                {t("draft")}
+              </span>
+            )}
+          </span>
           <StatusBadge readiness={behaviour.readiness} />
         </span>
       </div>
@@ -174,9 +182,19 @@ export function AssetCard({ asset, density }: { asset: GmlAsset; density?: CardD
   );
 }
 
-export function AssetGrid({ assets }: { assets: readonly GmlAsset[] }) {
+/** An empty library and an empty search look different: only one is fixable by typing less. */
+function EmptyState() {
   const { t } = useI18n();
-  if (assets.length === 0) return <p className="gml-empty">{t("emptyLibrary")}</p>;
+  const { all } = useLibrary();
+  return (
+    <p className="gml-empty" data-testid="empty-state">
+      {all.length === 0 ? t("noLibraryYet") : t("emptyLibrary")}
+    </p>
+  );
+}
+
+export function AssetGrid({ assets }: { assets: readonly GmlAsset[] }) {
+  if (assets.length === 0) return <EmptyState />;
   return (
     <div className="gml-grid" data-testid="asset-grid">
       {assets.map((asset) => (
@@ -187,8 +205,7 @@ export function AssetGrid({ assets }: { assets: readonly GmlAsset[] }) {
 }
 
 export function AssetList({ assets }: { assets: readonly GmlAsset[] }) {
-  const { t } = useI18n();
-  if (assets.length === 0) return <p className="gml-empty">{t("emptyLibrary")}</p>;
+  if (assets.length === 0) return <EmptyState />;
   return (
     <div className="gml-list" data-testid="asset-list">
       {assets.map((asset) => (

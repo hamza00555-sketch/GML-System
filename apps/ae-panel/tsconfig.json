@@ -6,11 +6,25 @@
     "declaration": false,
     "declarationMap": false,
     "paths": {
-      "@gml/core": ["../../packages/core/src/index.ts"],
-      "@gml/storage": ["../../packages/storage/src/index.ts"],
-      "@gml/ui": ["../../packages/ui/src/index.ts"],
-      "@gml/cep": ["../../packages/cep/src/index.ts"]
+      "@gml/core": [
+        "../../packages/core/src/index.ts"
+      ],
+      "@gml/storage": [
+        "../../packages/storage/src/index.ts"
+      ],
+      "@gml/ui": [
+        "../../packages/ui/src/index.ts"
+      ],
+      "@gml/cep": [
+        "../../packages/cep/src/index.ts"
+      ],
+      "@gml/preflight": [
+        "../../packages/preflight/src/index.ts"
+      ]
     }
   },
-  "include": ["src/**/*", "vite.config.ts"]
+  "include": [
+    "src/**/*",
+    "vite.config.ts"
+  ]
 }

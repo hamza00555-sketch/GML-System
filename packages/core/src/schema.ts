@@ -95,7 +95,12 @@ export const motionAssetSchema = z
     height: z.number().int().positive(),
     source: relativePath.default("source.aep"),
     preview: relativePath.default("preview.mp4"),
-    previewGif: relativePath.default("preview.gif"),
+    /**
+     * Optional: the GIF is for sharing outside the panel and needs ffmpeg to
+     * produce. A package made from the panel without a render toolchain
+     * ships MP4 and poster only.
+     */
+    previewGif: relativePath.optional(),
     poster: relativePath.default("poster.png"),
     dependencies: dependenciesSchema,
     /**
@@ -143,7 +148,7 @@ function referencedFiles(asset: GmlAsset): string[] {
     ? [
         asset.source,
         asset.preview,
-        asset.previewGif,
+        ...(asset.previewGif ? [asset.previewGif] : []),
         asset.poster,
         ...(asset.fallback ? [asset.fallback.file] : []),
       ]

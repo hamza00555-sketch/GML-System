@@ -105,7 +105,11 @@ function gmlExportStoryboard() {
     return gmlOk({ stub: true, message: "M0.5: bridge verified, nothing exported." });
 }
 
-/** M0.5 stub — real placement waits on Spike B. */
+/**
+ * Placement is not wired yet: it depends on the Group-before-Embed ordering
+ * that Spike B proves. Until then the panel browses the same library and
+ * reports what it would place.
+ */
 function gmlApply(payload) {
     try {
         var refs = payload && payload.refs ? payload.refs : [];
@@ -116,7 +120,7 @@ function gmlApply(payload) {
         return gmlOk({
             applied: false,
             stub: true,
-            message: "M0.5: bridge verified, no artwork placed. Received " + names.length + " asset(s).",
+            message: "Place is not enabled yet — run Spike B first. Would place " + names.length + " asset(s).",
             received: names
         });
     } catch (e) {

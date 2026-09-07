@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@gml/core": "workspace:*",
+    "@gml/preflight": "workspace:*",
+    "@gml/storage": "workspace:*",
     "@gml/ui": "workspace:*"
   },
   "peerDependencies": {

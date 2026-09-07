@@ -49,6 +49,14 @@ export const STRINGS = {
   resolution: { en: "Resolution", ar: "الأبعاد" },
   version: { en: "Version", ar: "النسخة" },
   lastUpdate: { en: "Last update", ar: "آخر تحديث" },
+  draft: { en: "Draft", ar: "مسودة" },
+  footage: { en: "Footage", ar: "الملفات" },
+  footageBundled: { en: "Bundled", ar: "مضمّنة" },
+  footageExternal: { en: "Not bundled", ar: "غير مضمّنة" },
+  noLibraryYet: {
+    en: "The library is empty. In After Effects, select a comp and press Publish to Library.",
+    ar: "المكتبة فارغة. في After Effects اختر كومب واضغط نشر للمكتبة.",
+  },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

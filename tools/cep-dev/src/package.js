@@ -125,6 +125,12 @@ const README_AR = `# GML — تركيب البلقنات على After Effects و
 
 بدون هذا الخيار تظهر رسالة خطأ عند تشغيل Spike A، ولا يُكتب التقرير.
 
+## ربط المكتبة (Google Drive)
+
+عند أول فتح تظهر شاشة **Library folder**. لو Google Drive for Desktop مثبّت يظهر مجلد
+\`GML_Library\` على الـ Shared Drive بعلامة **FOUND** → **Use**، أو **Create here** لإنشائه.
+التفاصيل الكاملة وطريقة إضافة العناصر في \`docs/library-setup.md\` (مرفق هنا باسم \`LIBRARY.ar.md\`).
+
 ## تشغيل سكربتات الاختبار (Spikes)
 
 الملفات في مجلد \`spikes/\`. كل سكربت يفتح في النهاية نافذة فيها التقرير **والنص محدد مسبقاً** — اضغط \`Ctrl+C\` (\`Cmd+C\`) وأرسله لي.
@@ -197,6 +203,8 @@ export function packageExtensions({ repoRoot }) {
   write("install-windows.bat", INSTALL_WIN.replace(/\n/g, "\r\n"));
   write("uninstall-windows.bat", UNINSTALL_WIN.replace(/\n/g, "\r\n"));
   write("README.ar.md", README_AR);
+  fs.copyFileSync(path.join(repoRoot, "docs", "library-setup.md"), path.join(out, "LIBRARY.ar.md"));
+  console.log("  ✓ LIBRARY.ar.md");
 
   const zip = path.join(releaseDir, `${name}.zip`);
   fs.rmSync(zip, { force: true });
