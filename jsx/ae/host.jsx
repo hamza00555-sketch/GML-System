@@ -1,9 +1,10 @@
 /**
- * After Effects host functions for M0.5.
+ * After Effects host functions.
  *
- * Reads are real — the panel's drop-zone target and readiness badges depend on
- * them. Applying is deliberately a reporting stub until Spike A settles how the
- * publish and import workflow behaves; nothing here modifies a project.
+ * Reads (target, environment, comp and project inspection) never modify the
+ * project. gmlApply imports and adds layers inside one undo group. The collect
+ * step that bundles footage into a package is not here yet: it waits on
+ * Spike A, so packages built from these functions carry footage as-is.
  */
 
 function gmlHostInfo() {
@@ -111,58 +112,12 @@ function gmlInspectComp() {
             return gmlErr("Select a composition first (click it in the Project panel or open it).");
         }
 
-        var seen = {};
-        var footageById = {};
-        var footage = [];
-        var fonts = {};
-        var effects = {};
-
-        function walk(c) {
-            if (seen[c.id]) { return; }
-            seen[c.id] = true;
-            for (var L = 1; L <= c.numLayers; L++) {
-                var layer = c.layer(L);
-
-                try {
-                    var src = layer.source;
-                    if (src instanceof CompItem) { walk(src); }
-                    else if (src instanceof FootageItem && !footageById[src.id]) {
-                        footageById[src.id] = true;
-                        footage[footage.length] = gmlFootageSnapshot(src);
-                    }
-                } catch (eSrc) { /* light/camera layers have no source */ }
-
-                try {
-                    if (layer instanceof TextLayer) {
-                        var font = layer.property("Source Text").value.font;
-                        if (font) { fonts[String(font)] = true; }
-                    }
-                } catch (eText) { /* some text layers refuse to report a font */ }
-
-                try {
-                    var parade = layer.property("ADBE Effect Parade");
-                    if (parade) {
-                        for (var E = 1; E <= parade.numProperties; E++) {
-                            var fx = parade.property(E);
-                            effects[String(fx.matchName)] = String(fx.name);
-                        }
-                    }
-                } catch (eFx) { /* layer types without an effect parade */ }
-            }
-        }
-        walk(comp);
+        var deps = gmlWalkComp(comp);
 
         var compNames = [];
         for (var i = 1; i <= app.project.numItems; i++) {
             var item = app.project.item(i);
             if (item instanceof CompItem) { compNames[compNames.length] = String(item.name); }
-        }
-
-        var fontList = [];
-        for (var f in fonts) { if (fonts.hasOwnProperty(f)) { fontList[fontList.length] = f; } }
-        var effectList = [];
-        for (var m in effects) {
-            if (effects.hasOwnProperty(m)) { effectList[effectList.length] = { matchName: m, name: effects[m] }; }
         }
 
         return gmlOk({
@@ -176,12 +131,126 @@ function gmlInspectComp() {
             projectDirty: app.project.dirty === true,
             aeVersion: String(app.version),
             compNames: compNames,
-            footage: footage,
-            fonts: fontList,
-            effects: effectList
+            footage: deps.footage,
+            fonts: deps.fonts,
+            effects: deps.effects
         });
     } catch (e) {
         return gmlErr("gmlInspectComp failed", e);
+    }
+}
+
+/** Collects everything reachable from a comp — shared by the two inspectors. */
+function gmlWalkComp(comp) {
+    var seen = {};
+    var footageById = {};
+    var footage = [];
+    var fonts = {};
+    var effects = {};
+
+    function walk(c) {
+        if (seen[c.id]) { return; }
+        seen[c.id] = true;
+        for (var L = 1; L <= c.numLayers; L++) {
+            var layer = c.layer(L);
+            try {
+                var src = layer.source;
+                if (src instanceof CompItem) { walk(src); }
+                else if (src instanceof FootageItem && !footageById[src.id]) {
+                    footageById[src.id] = true;
+                    footage[footage.length] = gmlFootageSnapshot(src);
+                }
+            } catch (eSrc) { /* light/camera layers have no source */ }
+            try {
+                if (layer instanceof TextLayer) {
+                    var font = layer.property("Source Text").value.font;
+                    if (font) { fonts[String(font)] = true; }
+                }
+            } catch (eText) { /* some text layers refuse to report a font */ }
+            try {
+                var parade = layer.property("ADBE Effect Parade");
+                if (parade) {
+                    for (var E = 1; E <= parade.numProperties; E++) {
+                        var fx = parade.property(E);
+                        effects[String(fx.matchName)] = String(fx.name);
+                    }
+                }
+            } catch (eFx) { /* layer types without an effect parade */ }
+        }
+    }
+    walk(comp);
+
+    var fontList = [];
+    for (var f in fonts) { if (fonts.hasOwnProperty(f)) { fontList[fontList.length] = f; } }
+    var effectList = [];
+    for (var m in effects) {
+        if (effects.hasOwnProperty(m)) { effectList[effectList.length] = { matchName: m, name: effects[m] }; }
+    }
+    return { footage: footage, fonts: fontList, effects: effectList };
+}
+
+function gmlCollectComps(container, out) {
+    if (container instanceof CompItem) { out[out.length] = container; return; }
+    if (!(container instanceof FolderItem)) { return; }
+    for (var i = 1; i <= container.numItems; i++) { gmlCollectComps(container.item(i), out); }
+}
+
+/**
+ * Reads the comps inside a project file on disk without opening it: the file
+ * is imported into the current project as a folder, read, and removed again,
+ * all inside one undo group and with dialogs suppressed. This is what lets
+ * ready-made .aep files dropped into the library's inbox be packaged without
+ * the designer opening each one.
+ */
+function gmlInspectAep(payload) {
+    var path = payload && payload.path;
+    if (!path) { return gmlErr("No path given"); }
+    var file = new File(path);
+    if (!file.exists) { return gmlErr("File not found: " + file.fsName); }
+
+    var imported = null;
+    app.beginUndoGroup("GML Inspect");
+    try { app.beginSuppressDialogs(); } catch (eS) { /* older hosts */ }
+    try {
+        imported = app.project.importFile(new ImportOptions(file));
+        var comps = [];
+        gmlCollectComps(imported, comps);
+
+        var names = [];
+        for (var n = 0; n < comps.length; n++) { names[names.length] = String(comps[n].name); }
+
+        var result = [];
+        for (var i = 0; i < comps.length; i++) {
+            var comp = comps[i];
+            var deps = gmlWalkComp(comp);
+            result[result.length] = {
+                compName: String(comp.name),
+                compId: comp.id,
+                fps: comp.frameRate,
+                width: comp.width,
+                height: comp.height,
+                duration: comp.duration,
+                projectPath: String(file.fsName),
+                projectDirty: false,
+                aeVersion: String(app.version),
+                compNames: names,
+                footage: deps.footage,
+                fonts: deps.fonts,
+                effects: deps.effects,
+                numLayers: comp.numLayers
+            };
+        }
+
+        imported.remove();
+        imported = null;
+        try { app.endSuppressDialogs(false); } catch (eE) { /* older hosts */ }
+        app.endUndoGroup();
+        return gmlOk({ path: String(file.fsName), comps: result });
+    } catch (e) {
+        try { if (imported) { imported.remove(); } } catch (eR) { /* best effort */ }
+        try { app.endSuppressDialogs(false); } catch (eE2) { /* older hosts */ }
+        app.endUndoGroup();
+        return gmlErr("gmlInspectAep failed", e);
     }
 }
 

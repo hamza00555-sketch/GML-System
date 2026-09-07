@@ -489,3 +489,8 @@
   gap: 4px;
 }
 .gml-corner .gml-diagbtn { position: static; }
+
+/* ---- inbox ---- */
+.gml-inbox__item { border-block-end: 1px solid var(--divider); padding-block: var(--space-1); }
+.gml-inbox__fields { padding-inline-start: 52px; display: flex; flex-direction: column; gap: 2px; }
+.gml-inbox__short { flex: 0 0 96px; }

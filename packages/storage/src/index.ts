@@ -5,3 +5,4 @@ export * from "./fs.js";
 export * from "./folder-provider.js";
 export * from "./file-url.js";
 export * from "./drive-detect.js";
+export * from "./inbox.js";

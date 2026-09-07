@@ -1,11 +1,12 @@
 import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MockLibraryProvider, type FolderLibraryProvider } from "@gml/storage";
+import { MockLibraryProvider, listInbox, type FolderLibraryProvider } from "@gml/storage";
 import { AE_CAPABILITIES, PanelRoot } from "@gml/ui";
 import {
   AddAssetView,
   CepHostBridge,
   DiagnosticsView,
+  InboxView,
   LibrarySetupView,
   openLibrary,
   panelNode,
@@ -32,13 +33,14 @@ const bridge = new CepHostBridge({
   },
 });
 
-type View = "library" | "setup" | "add" | "diagnostics";
+type View = "library" | "setup" | "add" | "inbox" | "diagnostics";
 
 function Panel() {
   const [config, setConfig] = useState<GmlConfig>(() => readConfig(node));
   const [view, setView] = useState<View>(() => (config.libraryRoot && node ? "library" : "setup"));
   const [reloadToken, setReloadToken] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  const [inboxCount, setInboxCount] = useState(0);
 
   const library = useMemo<FolderLibraryProvider | null>(() => {
     if (!node || !config.libraryRoot) return null;
@@ -57,6 +59,22 @@ function Panel() {
     bridge.attachLibrary(library);
     bridge.onPublishRequest = () => setView(library ? "add" : "setup");
   }, [library]);
+
+  // The inbox is filled from Drive on any machine, so it is re-counted while
+  // the library view is up rather than only at launch.
+  useEffect(() => {
+    if (!node || !library || view !== "library") return;
+    const count = () => {
+      try {
+        setInboxCount(listInbox(node.fs, library.root).length);
+      } catch {
+        setInboxCount(0);
+      }
+    };
+    count();
+    const timer = setInterval(count, 5000);
+    return () => clearInterval(timer);
+  }, [library, view, reloadToken]);
 
   const chooseLibrary = (root: string) => {
     const next = { ...config, libraryRoot: root };
@@ -89,6 +107,18 @@ function Panel() {
           }}
         />
       )}
+      {view === "inbox" && library && node && (
+        <InboxView
+          node={node}
+          provider={library}
+          author={config.author ?? "gml"}
+          onClose={() => setView("library")}
+          onImported={(count) => {
+            setReloadToken((n) => n + 1);
+            setNotice(`Imported ${count} asset(s) from _inbox`);
+          }}
+        />
+      )}
       {view === "diagnostics" && <DiagnosticsView onClose={() => setView("library")} />}
 
       {view === "library" && (
@@ -96,6 +126,11 @@ function Panel() {
           {notice && (
             <button type="button" className="gml-diagbtn" onClick={() => setNotice(null)} title="dismiss">
               ✓ {notice}
+            </button>
+          )}
+          {library && (
+            <button type="button" className="gml-diagbtn" onClick={() => setView("inbox")} title="Import ready-made assets dropped into _inbox">
+              ⤵ Inbox{inboxCount > 0 ? ` (${inboxCount})` : ""}
             </button>
           )}
           <button type="button" className="gml-diagbtn" onClick={() => setView("setup")} title="Library folder">

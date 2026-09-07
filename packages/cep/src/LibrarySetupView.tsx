@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { STAGING_DIR, STATUS_DIRS, type DriveCandidate } from "@gml/storage";
+import { INBOX_DIR, STAGING_DIR, STATUS_DIRS, type DriveCandidate } from "@gml/storage";
 import { libraryCandidates, validateLibraryRoot } from "./library.js";
 import type { PanelNode } from "./node.js";
 
@@ -50,7 +50,7 @@ export function LibrarySetupView({
     if (create) {
       try {
         node.fs.mkdir(trimmed);
-        for (const dir of [...STATUS_DIRS, STAGING_DIR]) node.fs.mkdir(node.fs.join(trimmed, dir));
+        for (const dir of [...STATUS_DIRS, STAGING_DIR, INBOX_DIR]) node.fs.mkdir(node.fs.join(trimmed, dir));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         return;
@@ -137,6 +137,8 @@ export function LibrarySetupView({
           Every asset is a folder with a <code>meta.json</code>. Publishing writes into{" "}
           <code>_staging</code>, verifies every file, then moves the folder into <code>drafts</code>{" "}
           or <code>approved</code>. Drive syncs it to everyone; a half-synced folder is never shown.
+          Ready-made assets can be dropped into <code>_inbox/&lt;name&gt;/</code> (an .aep, an .mp4
+          preview, optional poster.png) from any machine and imported from the After Effects panel.
         </p>
       </div>
     </div>

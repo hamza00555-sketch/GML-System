@@ -1,6 +1,7 @@
 import type { AssetManifest, GmlAsset } from "@gml/core";
 import { MANIFEST_EXCLUDED, gmlAssetSchema, safeParseAsset } from "@gml/core";
 import type { FolderFs, Hashes } from "./fs.js";
+import { INBOX_DIR } from "./inbox.js";
 import {
   PublishVerificationError,
   verifyStagedUpload,
@@ -74,7 +75,7 @@ export class FolderLibraryProvider implements LibraryProvider {
 
   /** Creates the folder layout. Safe to call on an existing library. */
   ensureLayout(): void {
-    for (const dir of [...STATUS_DIRS, STAGING_DIR]) {
+    for (const dir of [...STATUS_DIRS, STAGING_DIR, INBOX_DIR]) {
       const p = this.fs.join(this.root, dir);
       if (!this.fs.exists(p)) this.fs.mkdir(p);
     }

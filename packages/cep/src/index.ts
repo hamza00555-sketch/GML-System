@@ -11,3 +11,4 @@ export * from "./package-builder.js";
 export * from "./poster.js";
 export * from "./LibrarySetupView.js";
 export * from "./AddAssetView.js";
+export * from "./InboxView.js";

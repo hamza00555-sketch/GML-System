@@ -25,3 +25,12 @@ export function inspectComp(): Promise<CompInspection> {
 export function saveProject(): Promise<{ path: string; dirty: boolean }> {
   return callHost("gmlSaveProject");
 }
+
+export interface AepComp extends CompInspection {
+  numLayers: number;
+}
+
+/** Every comp inside a project file on disk, read without opening it. */
+export function inspectAep(path: string): Promise<{ path: string; comps: AepComp[] }> {
+  return callHost("gmlInspectAep", { path }, 120000);
+}
