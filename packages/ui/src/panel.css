@@ -455,7 +455,23 @@
 .gml-panel[data-mode="standard"] .gml-body { padding: var(--space-2); }
 
 /* ---- overlays (settings, publish, diagnostics) ---- */
-.gml-panelhost { position: relative; block-size: 100%; inline-size: 100%; }
+.gml-panelhost {
+  position: relative;
+  block-size: 100%;
+  inline-size: 100%;
+  background: var(--surface-0);
+  color: var(--text-1);
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  line-height: var(--lh);
+}
+.gml-panelhost *,
+.gml-panelhost *::before,
+.gml-panelhost *::after { box-sizing: border-box; }
+.gml-panelhost button,
+.gml-panelhost input,
+.gml-panelhost select,
+.gml-panelhost textarea { font: inherit; }
 .gml-diag {
   position: absolute;
   inset: 0;

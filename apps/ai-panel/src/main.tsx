@@ -66,7 +66,7 @@ function Panel() {
   const fetch = useMemo(() => runtime?.fetchService ?? new FakeFetchService("instant"), [runtime]);
 
   return (
-    <div className="gml-panelhost">
+    <div className="gml-panelhost" data-theme={theme}>
       <PanelRoot bridge={bridge} source={source} fetch={fetch} theme={theme} reloadToken={reloadToken} />
 
       {view === "settings" && (

@@ -10,7 +10,14 @@
  * The panel follows the host's skin: [data-theme="dark"|"light"] on the root
  * is set from appSkinInfo and updated on themeColorChanged. Dark is the base.
  */
+/*
+ * Tokens live on the app host as well as the panel root: the Settings,
+ * Publish and Diagnostics overlays are siblings of .gml-panel, and an
+ * overlay with undefined tokens renders transparent in a serif font.
+ */
+.gml-panelhost,
 .gml-panel,
+.gml-panelhost[data-theme="dark"],
 .gml-panel[data-theme="dark"] {
   --surface-0: #1e1e1e;
   --surface-1: #252525;
@@ -40,6 +47,7 @@
 }
 
 /* Badges drawn over a poster sit on an image, not on the panel surface. */
+.gml-panelhost,
 .gml-panel {
   --media-overlay: rgba(0, 0, 0, 0.58);
   --on-media-cloud: #c9d1dc;
@@ -48,6 +56,7 @@
   --on-media-failed: #ff8d7e;
 }
 
+.gml-panelhost[data-theme="light"],
 .gml-panel[data-theme="light"] {
   --surface-0: #f2f2f2;
   --surface-1: #ffffff;
@@ -74,6 +83,7 @@
   --state-failed: #c0392b;
 }
 
+.gml-panelhost,
 .gml-panel {
   /* Type scale: 11 / 12 / 13 / 15. Dense, like the host's own panels. */
   --fs-xs: 10px;
@@ -104,6 +114,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .gml-panelhost,
   .gml-panel {
     --dur-hover: 0ms;
     --dur-layout: 0ms;

@@ -90,7 +90,7 @@ function Panel() {
   };
 
   return (
-    <div className="gml-panelhost">
+    <div className="gml-panelhost" data-theme={theme}>
       <PanelRoot bridge={bridge} source={source} fetch={fetch} theme={theme} reloadToken={reloadToken} />
 
       {view === "settings" && (
