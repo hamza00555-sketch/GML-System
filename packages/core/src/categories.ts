@@ -1,5 +1,5 @@
 /**
- * The eight approved library categories. This list is closed: new top-level
+ * The approved library categories — one per top-level folder in the library. This list is closed: new top-level
  * categories are not added here — narrower groupings (shapes, maps, charts,
  * lower thirds, ...) live as `tags` on assets inside these categories.
  */
@@ -11,7 +11,6 @@ export const CATEGORIES = [
   "guideline",
   "illustrations",
   "transitions",
-  "audio",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -25,7 +24,6 @@ export const CATEGORY_LABELS: Record<Category, { en: string; ar: string }> = {
   guideline: { en: "Guideline", ar: "الدليل" },
   illustrations: { en: "Illustrations", ar: "رسومات" },
   transitions: { en: "Transitions", ar: "انتقالات" },
-  audio: { en: "Audio", ar: "صوتيات" },
 };
 
 export function isCategory(value: string): value is Category {

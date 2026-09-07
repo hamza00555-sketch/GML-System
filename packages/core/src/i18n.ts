@@ -1,4 +1,4 @@
-import type { GmlAsset } from "./schema.js";
+import type { LibraryAsset } from "./library.js";
 
 /**
  * Tool chrome is English by default with Arabic available from Settings.
@@ -23,7 +23,6 @@ export const STRINGS = {
   all: { en: "All", ar: "الكل" },
   apply: { en: "Apply", ar: "تطبيق" },
   place: { en: "Place", ar: "إضافة" },
-  add: { en: "Add", ar: "إدراج" },
   settings: { en: "Settings", ar: "الإعدادات" },
   filter: { en: "Filter", ar: "تصفية" },
   dropHere: { en: "Drop here", ar: "أفلت هنا" },
@@ -44,19 +43,32 @@ export const STRINGS = {
   clearQueue: { en: "Clear", ar: "مسح" },
   language: { en: "Language", ar: "اللغة" },
   emptyLibrary: { en: "No assets found", ar: "لا توجد عناصر" },
+  noLibraryYet: {
+    en: "Nothing indexed yet. Open Settings and choose the library folder.",
+    ar: "لم تُفهرس المكتبة بعد. افتح الإعدادات واختر مجلد المكتبة.",
+  },
   selectAnAsset: { en: "Select an asset", ar: "اختر عنصراً" },
   duration: { en: "Duration", ar: "المدة" },
   resolution: { en: "Resolution", ar: "الأبعاد" },
   version: { en: "Version", ar: "النسخة" },
   lastUpdate: { en: "Last update", ar: "آخر تحديث" },
   draft: { en: "Draft", ar: "مسودة" },
-  footage: { en: "Footage", ar: "الملفات" },
-  footageBundled: { en: "Bundled", ar: "مضمّنة" },
-  footageExternal: { en: "Not bundled", ar: "غير مضمّنة" },
-  noLibraryYet: {
-    en: "The library is empty. In After Effects, select a comp and press Publish to Library.",
-    ar: "المكتبة فارغة. في After Effects اختر كومب واضغط نشر للمكتبة.",
-  },
+  variant: { en: "Variant", ar: "النسخة" },
+  size: { en: "Size", ar: "الحجم" },
+  codec: { en: "Codec", ar: "الترميز" },
+  source: { en: "Source", ar: "المصدر" },
+  kindVideoAlpha: { en: "Alpha video", ar: "فيديو بألفا" },
+  kindComp: { en: "Editable comp", ar: "كومب قابل للتعديل" },
+  kindStill: { en: "Still", ar: "صورة" },
+  stateCloud: { en: "Cloud", ar: "سحابي" },
+  stateFetching: { en: "Fetching", ar: "جارٍ التنزيل" },
+  stateReady: { en: "Ready", ar: "جاهز" },
+  stateFailed: { en: "Failed", ar: "فشل" },
+  needsRerender: { en: "Needs re-render", ar: "يحتاج إعادة رندر" },
+  updateAvailable: { en: "Update available", ar: "تحديث متاح" },
+  saveCopy: { en: "Save a copy…", ar: "حفظ نسخة…" },
+  more: { en: "More", ar: "المزيد" },
+  cancel: { en: "Cancel", ar: "إلغاء" },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
@@ -66,13 +78,13 @@ export function t(key: StringKey, locale: Locale = DEFAULT_LOCALE): string {
 }
 
 /**
- * Falls back to the other locale's name rather than rendering an empty label
- * when only one of the two was filled in.
+ * Falls back to the other name rather than rendering an empty label when only
+ * one was available. Most library names are English with no Arabic twin.
  */
-export function assetName(asset: GmlAsset, locale: Locale): string {
-  const preferred = locale === "ar" ? asset.nameAr : asset.nameEn;
-  const fallback = locale === "ar" ? asset.nameEn : asset.nameAr;
-  return preferred.trim() || fallback.trim();
+export function assetName(asset: Pick<LibraryAsset, "name" | "nameAr">, locale: Locale): string {
+  const ar = (asset.nameAr ?? "").trim();
+  const en = asset.name.trim();
+  return locale === "ar" ? ar || en : en || ar;
 }
 
 export function formatDuration(seconds: number, locale: Locale = DEFAULT_LOCALE): string {

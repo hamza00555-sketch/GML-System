@@ -1,13 +1,13 @@
 /**
  * Grabs a frame from the preview and encodes it as PNG in the panel itself, so
- * a poster never has to be rendered separately. Works wherever H.264 decodes
- * (Spike E); when it does not, the designer supplies a PNG instead.
+ * no ffmpeg is involved. Seeks to ~15% of the duration, not frame 0 — frame 0
+ * is often blank in a motion piece.
  */
-export function extractPosterFromVideo(
-  src: string,
-  atSeconds = 0.5,
-  timeoutMs = 10000,
-): Promise<Uint8Array> {
+export function extractPosterFromVideo(src: string, options: { fraction?: number; timeoutMs?: number; maxWidth?: number } = {}): Promise<Uint8Array> {
+  const fraction = options.fraction ?? 0.15;
+  const timeoutMs = options.timeoutMs ?? 15000;
+  const maxWidth = options.maxWidth ?? 640;
+
   return new Promise((resolve, reject) => {
     const video = document.createElement("video");
     video.muted = true;
@@ -30,18 +30,19 @@ export function extractPosterFromVideo(
     });
 
     video.addEventListener("loadedmetadata", () => {
-      const at = Math.min(atSeconds, Math.max(0, (video.duration || 1) / 2));
-      video.currentTime = at;
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      video.currentTime = Math.max(0, duration * fraction);
     });
 
     video.addEventListener("seeked", () => {
       try {
+        const scale = Math.min(1, maxWidth / Math.max(1, video.videoWidth));
         const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("no 2D canvas");
-        ctx.drawImage(video, 0, 0);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         canvas.toBlob((blob) => {
           clearTimeout(timer);
           cleanup();

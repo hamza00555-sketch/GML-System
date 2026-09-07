@@ -1,12 +1,15 @@
 import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MockLibraryProvider, type FolderLibraryProvider } from "@gml/storage";
-import { AI_CAPABILITIES, PanelRoot } from "@gml/ui";
+import { AI_CAPABILITIES, FakeFetchService, PanelRoot, fakeSource, type PanelTheme } from "@gml/ui";
+import { emptyIndex } from "@gml/core";
 import {
   CepHostBridge,
   DiagnosticsView,
-  LibrarySetupView,
-  openLibrary,
+  LibraryRuntime,
+  SettingsView,
+  extractPosterFromVideo,
+  hostTheme,
+  onThemeChange,
   panelNode,
   readConfig,
   writeConfig,
@@ -16,66 +19,78 @@ import "@gml/ui/tokens.css";
 import "@gml/ui/panel.css";
 
 /**
- * Illustrator panel. Same library folder as After Effects (the config is
- * shared per machine); placing artwork waits on Spike B, so the primary
- * action reports rather than places.
+ * Illustrator panel. Same library, same cache, same config as After Effects.
+ * It cannot read comps out of project files, so a rescan here keeps the
+ * expansions After Effects produced. Place stays a message-only stub.
  */
 const node = panelNode();
 
-const bridge = new CepHostBridge({
-  capabilities: AI_CAPABILITIES,
-  onError: (context, error) => {
-    console.error(`[gml] ${context}: ${error instanceof Error ? error.message : String(error)}`);
-  },
-});
+function buildRuntime(config: GmlConfig): LibraryRuntime | null {
+  if (!node) return null;
+  try {
+    return new LibraryRuntime({ node, config, makePoster: (url) => extractPosterFromVideo(url), onLog: (m) => console.warn(`[gml] ${m}`) });
+  } catch (error) {
+    console.error("[gml] runtime failed", error);
+    return null;
+  }
+}
 
-type View = "library" | "setup" | "diagnostics";
+type View = "library" | "settings" | "diagnostics";
 
 function Panel() {
   const [config, setConfig] = useState<GmlConfig>(() => readConfig(node));
-  const [view, setView] = useState<View>(() => (config.libraryRoot && node ? "library" : "setup"));
+  const runtime = useMemo(() => buildRuntime(config), []);
+  const [view, setView] = useState<View>(() => (config.libraryRoot && runtime ? "library" : "settings"));
+  const [theme, setTheme] = useState<PanelTheme>(() => hostTheme());
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const library = useMemo<FolderLibraryProvider | null>(() => {
-    if (!node || !config.libraryRoot) return null;
-    try {
-      return openLibrary(node, config.libraryRoot);
-    } catch (error) {
-      console.error("[gml] could not open library", error);
-      return null;
-    }
-  }, [config.libraryRoot]);
+  const bridge = useMemo(
+    () =>
+      new CepHostBridge({
+        capabilities: AI_CAPABILITIES,
+        runtime,
+        onError: (context, error) => console.error(`[gml] ${context}: ${error instanceof Error ? error.message : String(error)}`),
+      }),
+    [runtime],
+  );
 
-  const provider = useMemo(() => library ?? new MockLibraryProvider(), [library]);
+  useEffect(() => onThemeChange(setTheme), []);
 
   useEffect(() => {
-    bridge.attachLibrary(library);
-  }, [library]);
+    if (!runtime || !config.libraryRoot) return;
+    if (runtime.status().assets === 0) runtime.scan().then(() => setReloadToken((n) => n + 1)).catch(() => {});
+    else void runtime.ensurePosters();
+  }, [runtime]);
 
-  const chooseLibrary = (root: string) => {
-    const next = { ...config, libraryRoot: root };
-    writeConfig(node, next);
-    setConfig(next);
-    setView("library");
-  };
+  const source = useMemo(() => runtime?.source ?? fakeSource(emptyIndex("")), [runtime]);
+  const fetch = useMemo(() => runtime?.fetchService ?? new FakeFetchService("instant"), [runtime]);
 
   return (
     <div className="gml-panelhost">
-      <PanelRoot bridge={bridge} provider={provider} />
+      <PanelRoot bridge={bridge} source={source} fetch={fetch} theme={theme} reloadToken={reloadToken} />
 
-      {view === "setup" && (
-        <LibrarySetupView
+      {view === "settings" && (
+        <SettingsView
           node={node}
-          current={config.libraryRoot}
-          onChoose={chooseLibrary}
-          onClose={library ? () => setView("library") : undefined}
+          runtime={runtime}
+          config={config}
+          canScan={false}
+          onSave={(next) => {
+            writeConfig(node, next);
+            setConfig(next);
+            runtime?.applyConfig(next);
+            setReloadToken((n) => n + 1);
+            if (next.libraryRoot) setView("library");
+          }}
+          onClose={config.libraryRoot ? () => setView("library") : undefined}
         />
       )}
       {view === "diagnostics" && <DiagnosticsView onClose={() => setView("library")} />}
 
       {view === "library" && (
         <div className="gml-corner">
-          <button type="button" className="gml-diagbtn" onClick={() => setView("setup")} title="Library folder">
-            ⚙ Library
+          <button type="button" className="gml-diagbtn" onClick={() => setView("settings")} title="Library, cache and sign-in">
+            ⚙ Settings
           </button>
           <button type="button" className="gml-diagbtn" onClick={() => setView("diagnostics")}>
             Diagnostics

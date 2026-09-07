@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { sampleLibrary } from "@gml/core";
-import { MockLibraryProvider } from "@gml/storage";
-import { PanelRoot } from "@gml/ui";
+import { largeIndex } from "@gml/core";
+import { FakeFetchService, PanelRoot, fakeSource, type PanelTheme } from "@gml/ui";
 import { BrowserHostBridge, type HarnessLogEntry, type HostChoice } from "./browserHost.js";
 
 /**
  * Frames the panel in a resizable column so the real ResizeObserver drives the
  * mode, exactly as it will when a designer drags the panel edge inside Adobe.
+ * Fetches are simulated with a timer so the ☁ → ⬇ → ✓ sequence is visible.
  */
 
 const PRESETS: { label: string; width: number; note: string }[] = [
@@ -15,38 +15,61 @@ const PRESETS: { label: string; width: number; note: string }[] = [
   { label: "Explorer", width: 900, note: "> 650px" },
 ];
 
+/** Drives the manual fake with a timer so progress is visible while designing. */
+class TimedFetchService extends FakeFetchService {
+  constructor() {
+    super("manual");
+  }
+  override fetch(asset: Parameters<FakeFetchService["fetch"]>[0], deliverable: Parameters<FakeFetchService["fetch"]>[1]) {
+    const key = this.key(asset, deliverable);
+    const promise = super.fetch(asset, deliverable);
+    if (this.state(asset, deliverable).status === "fetching") {
+      let done = 0;
+      const step = Math.max(1, deliverable.bytes / 20);
+      const timer = setInterval(() => {
+        done += step;
+        if (done >= deliverable.bytes) {
+          clearInterval(timer);
+          this.complete(key);
+        } else {
+          this.advance(key, done);
+        }
+      }, 120);
+    }
+    return promise;
+  }
+}
+
 export function HarnessApp() {
   const [host, setHost] = useState<HostChoice>("ae");
+  const [theme, setTheme] = useState<PanelTheme>("dark");
   const [width, setWidth] = useState(900);
   const [log, setLog] = useState<HarnessLogEntry[]>([]);
 
-  const assets = useMemo(() => sampleLibrary(), []);
-  const provider = useMemo(() => new MockLibraryProvider({ seed: assets }), [assets]);
-  const bridge = useMemo(
-    () => new BrowserHostBridge(host, assets, (entry) => setLog((l) => [entry, ...l].slice(0, 40))),
-    [host, assets],
-  );
+  const source = useMemo(() => fakeSource(largeIndex(48)), []);
+  const fetch = useMemo(() => new TimedFetchService(), []);
+  const bridge = useMemo(() => new BrowserHostBridge(host, (entry) => setLog((l) => [entry, ...l].slice(0, 40))), [host]);
 
   return (
-    <div className="harness">
+    <div className="harness" data-theme={theme}>
       <aside className="harness__controls">
         <h1 className="harness__title">GML Panel Harness</h1>
-        <p className="harness__blurb">
-          The panel below runs against a mock library and a fake host bridge — no
-          Adobe application involved.
-        </p>
+        <p className="harness__blurb">The panel below runs against a fixture index and a fake host bridge — no Adobe application involved.</p>
 
         <label className="harness__label">Host</label>
         <div className="harness__row">
           {(["ae", "ai"] as HostChoice[]).map((choice) => (
-            <button
-              key={choice}
-              type="button"
-              className="harness__btn"
-              data-active={host === choice || undefined}
-              onClick={() => setHost(choice)}
-            >
+            <button key={choice} type="button" className="harness__btn" data-active={host === choice || undefined} onClick={() => setHost(choice)}>
               {choice === "ae" ? "After Effects" : "Illustrator"}
+            </button>
+          ))}
+        </div>
+
+        <label className="harness__label">Host theme</label>
+        <div className="harness__row">
+          {(["dark", "light"] as PanelTheme[]).map((choice) => (
+            <button key={choice} type="button" className="harness__btn" data-active={theme === choice || undefined} onClick={() => setTheme(choice)}>
+              {choice}
             </button>
           ))}
         </div>
@@ -54,24 +77,10 @@ export function HarnessApp() {
         <label className="harness__label" htmlFor="width">
           Panel width — {width}px
         </label>
-        <input
-          id="width"
-          className="harness__range"
-          type="range"
-          min={180}
-          max={1100}
-          value={width}
-          onChange={(e) => setWidth(Number(e.target.value))}
-        />
+        <input id="width" className="harness__range" type="range" min={180} max={1100} value={width} onChange={(e) => setWidth(Number(e.target.value))} />
         <div className="harness__row">
           {PRESETS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              className="harness__btn"
-              title={preset.note}
-              onClick={() => setWidth(preset.width)}
-            >
+            <button key={preset.label} type="button" className="harness__btn" title={preset.note} onClick={() => setWidth(preset.width)}>
               {preset.label}
             </button>
           ))}
@@ -92,8 +101,8 @@ export function HarnessApp() {
 
       <div className="harness__stage">
         <div className="harness__panel" style={{ width }}>
-          {/* Remounted per host so capabilities and hidden categories reset. */}
-          <PanelRoot key={host} bridge={bridge} provider={provider} initialWidth={width} />
+          {/* Remounted per host so capabilities reset. */}
+          <PanelRoot key={host} bridge={bridge} source={source} fetch={fetch} theme={theme} initialWidth={width} />
         </div>
       </div>
     </div>

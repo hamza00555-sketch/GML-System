@@ -1,14 +1,26 @@
 import type { PanelNode } from "./node.js";
 
 /**
- * Per-machine settings shared by both panels: ~/.gml/config.json. Kept out of
- * localStorage as the primary store because each CEP extension has its own
- * origin, and the library folder must be the same for AE and Illustrator.
+ * Per-machine settings shared by both panels: ~/.gml/config.json. Nothing
+ * secret lives here except the OAuth client "secret", which for an installed
+ * app is public by design — and it is still never inside the extension.
  */
+export interface DriveConfig {
+  clientId?: string;
+  clientSecret?: string;
+  /** Shared Drive name and folder path; derived from the mount path when absent. */
+  rootPath?: string;
+}
+
 export interface GmlConfig {
   libraryRoot?: string;
-  author?: string;
+  cacheRoot?: string;
+  cacheCapGB?: number;
+  transport?: "mount" | "drive";
+  drive?: DriveConfig;
 }
+
+export const DEFAULT_CACHE_CAP_GB = 50;
 
 const LOCAL_KEY = "gml.config";
 
@@ -51,4 +63,14 @@ export function writeConfig(node: PanelNode | null, config: GmlConfig): void {
   } catch {
     // Nothing more to do.
   }
+}
+
+/**
+ * "G:\Shared drives\Motion\Hamza\2026\Motion Library" →
+ * "Motion/Hamza/2026/Motion Library": the Shared Drive name, then the path.
+ */
+export function driveRootPathFromMount(libraryRoot: string): string | null {
+  const normalised = libraryRoot.replace(/\\/g, "/");
+  const m = /\/Shared drives\/(.+)$/i.exec(normalised);
+  return m ? m[1]!.replace(/\/+$/, "") : null;
 }

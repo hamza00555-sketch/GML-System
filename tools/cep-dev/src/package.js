@@ -99,7 +99,7 @@ pause
 
 const README_AR = `# GML — تركيب البلقنات على After Effects وIllustrator
 
-هذه نسخة تطوير غير موقّعة (M0.5). لا تحتاج Node ولا pnpm ولا المستودع — كل شيء جاهز هنا.
+هذه نسخة تطوير غير موقّعة (M1). لا تحتاج Node ولا pnpm ولا المستودع — كل شيء جاهز هنا.
 
 ## التركيب — خطوة واحدة
 
@@ -127,9 +127,10 @@ const README_AR = `# GML — تركيب البلقنات على After Effects و
 
 ## ربط المكتبة (Google Drive)
 
-عند أول فتح تظهر شاشة **Library folder**. لو Google Drive for Desktop مثبّت يظهر مجلد
-\`GML_Library\` على الـ Shared Drive بعلامة **FOUND** → **Use**، أو **Create here** لإنشائه.
-التفاصيل الكاملة وطريقة إضافة العناصر في \`docs/library-setup.md\` (مرفق هنا باسم \`LIBRARY.ar.md\`).
+عند أول فتح تظهر **Settings**. أدخل مسار مجلد المكتبة على Google Drive for Desktop
+(مثل \`G:\\Shared drives\\Motion\\Hamza\\2026\\Motion Library\`) → **Save** → **Rescan**.
+الكاش المحلي يُنشأ تلقائياً في \`%LOCALAPPDATA%\\GML\` (أو \`~/Library/Application Support/GML\`).
+التفاصيل الكاملة في \`LIBRARY.ar.md\` المرفق.
 
 ## تشغيل سكربتات الاختبار (Spikes)
 

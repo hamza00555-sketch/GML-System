@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
-import type { Category, InstalledEnvironment } from "@gml/core";
+import type { Deliverable, InstalledEnvironment, LibraryAsset, Stamp } from "@gml/core";
 
 /**
  * The seam between the shared panel UI and whichever Adobe host it runs in.
@@ -18,20 +18,20 @@ export interface HostTarget {
   name: string;
 }
 
-export interface AssetRef {
-  id: string;
-  version: string;
-}
-
 export interface HostResult {
   ok: boolean;
   message?: string;
 }
 
+/** One thing to import: always a fully materialised local file. */
+export interface ApplyItem {
+  asset: LibraryAsset;
+  deliverable: Deliverable;
+  localPath: string;
+}
+
 export interface HostCapabilities {
   hostKind: HostKind;
-  /** Illustrator hides audio: placing a sound clip on an artboard is meaningless. */
-  hiddenCategories: readonly Category[];
   /** Drives the primary button: Apply in AE, Place in Illustrator. */
   primaryAction: "apply" | "place";
   /** Illustrator only — the storyboard tag tools. */
@@ -46,24 +46,30 @@ export interface HostBridge {
   getTarget(): Promise<HostTarget>;
   /** What is installed here, so readiness can be judged before applying. */
   getEnvironment(): Promise<InstalledEnvironment>;
-  /** Apply (AE) or place (Illustrator), in queue order. */
-  applyAssets(refs: readonly AssetRef[]): Promise<HostResult>;
   /**
-   * Turns a package-relative path into something the panel can load. Only the
-   * host knows whether that is a file:// path in the local cache or an http
-   * URL served by the harness.
+   * Apply (AE) or place (Illustrator), in queue order. Every item's localPath
+   * is complete on disk before this is called — never a file mid-download.
    */
-  resolveUrl(asset: { id: string; version: string }, relativePath: string): string;
+  applyAssets(items: readonly ApplyItem[]): Promise<HostResult>;
+  /** Stamps in the open project: pins their cached versions and flags updates. */
+  getProjectStamps?(): Promise<Stamp[]>;
+  /** Cached poster, or null before the poster exists. */
+  posterUrl(asset: LibraryAsset): string | null;
+  /** Cached preview for the shared video element, or null before it is fetched. */
+  previewUrl(asset: LibraryAsset): string | null;
 
   setTagsVisible?(visible: boolean): Promise<HostResult>;
   resyncTags?(): Promise<HostResult>;
   exportStoryboard?(): Promise<HostResult>;
   publishComp?(): Promise<HostResult>;
+  /** Copies a fetched deliverable somewhere the user chooses. */
+  saveCopy?(item: ApplyItem): Promise<HostResult>;
+  /** Shows the linked source project in Finder/Explorer. */
+  revealSource?(asset: LibraryAsset): Promise<HostResult>;
 }
 
 export const AE_CAPABILITIES: HostCapabilities = {
   hostKind: "ae",
-  hiddenCategories: [],
   primaryAction: "apply",
   hasTagTools: false,
   canPublish: true,
@@ -71,7 +77,6 @@ export const AE_CAPABILITIES: HostCapabilities = {
 
 export const AI_CAPABILITIES: HostCapabilities = {
   hostKind: "ai",
-  hiddenCategories: ["audio"],
   primaryAction: "place",
   hasTagTools: true,
   canPublish: false,
@@ -79,13 +84,7 @@ export const AI_CAPABILITIES: HostCapabilities = {
 
 const HostContext = createContext<HostBridge | null>(null);
 
-export function HostBridgeProvider({
-  bridge,
-  children,
-}: {
-  bridge: HostBridge;
-  children: ReactNode;
-}) {
+export function HostBridgeProvider({ bridge, children }: { bridge: HostBridge; children: ReactNode }) {
   return <HostContext.Provider value={bridge}>{children}</HostContext.Provider>;
 }
 

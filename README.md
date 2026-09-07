@@ -94,22 +94,30 @@ Then quit and reopen the host, and use `Window → Extensions → GML`.
 See [`docs/m0.5/`](./docs/m0.5/README.md) for the install guide, the in-Adobe
 verification checklist, and the five spikes.
 
-## Status
+## Status — M1
 
-**M0 is complete** — the packages and the harness, with the UI and all rules
-covered by tests that run without Adobe.
+The panels index the team's hand-authored library on the Shared Drive
+(`Motion Library/`), cache what they use under `%LOCALAPPDATA%\GML` (or
+`~/Library/Application Support/GML`), and import only from that cache. The
+library is never restructured; Publish writes one folder per asset, the way a
+person would.
 
-**M0.5 is ready to run.** The panels install into After Effects and Illustrator,
-and every risky assumption has an executable test:
+- **Indexer** — recognises the three folder shapes (flat, master project, item
+  folders), skips render/source/auto-save noise, parses the filename
+  convention into tags and variants, probes codec/size from container headers
+  with bounded reads, and rescans incrementally.
+- **Cache** — atomic `.part` → rename, resume from the part, per-file locks,
+  versions side by side, LRU eviction under a size cap with pins for whatever
+  the open project references.
+- **Transport seam** — Google Drive for Desktop mount today; Google Drive API
+  with per-user OAuth (PKCE, loopback, system browser, `drive.readonly` +
+  `drive.file`, Range resume, backoff) behind the same interface; object
+  storage can slot in later without touching anything else.
+- **Panel** — posters only, one shared `<video>`, ☁ / ⬇ / ✓ per asset, Apply
+  = fetch-then-import, variants, render-standard badges, host theme, RTL.
 
-| Spike | What it decides | How to run |
-|-------|-----------------|------------|
-| **A** | Whether a comp can become a portable package without endangering the designer's open project. **Gates M3.** | `spikes/spike-a1-probe-READONLY.jsx`, then `spike-a2-roundtrip.jsx` |
-| **B** | Whether an Illustrator tag survives embed, save and reopen | `spikes/spike-b-group-embed.jsx` |
-| **C** | Whether Node in CEP gives a loopback server, disk and HTTPS | Panel → Diagnostics → Node + playback |
-| **D** | Whether `aerender` and `ffmpeg` are available | `pnpm spike:d` |
-| **E** | Whether MP4/H.264 plays inside CEP | Panel → Diagnostics |
+See [`docs/library-setup.md`](./docs/library-setup.md) for setup and use and
+[`docs/m1-acceptance.md`](./docs/m1-acceptance.md) for the acceptance
+checklist to run on a machine with After Effects. Illustrator `Place`, Spike D
+and extension signing are deliberately out of scope for M1.
 
-These need real Adobe applications, so they run on a designer's machine rather
-than in CI. **M1 does not begin until A, B, C and E have passed** — and nothing
-is built on a spike that failed.

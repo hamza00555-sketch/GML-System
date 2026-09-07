@@ -1,40 +1,39 @@
-import { CATEGORY_LABELS, isAudioAsset, type AudioAsset, type MotionAsset } from "@gml/core";
+import { useEffect, useRef, useState } from "react";
+import { CATEGORY_LABELS, assetKey, deliverableLabel, fileNameOf, formatBytes, type LibraryAsset } from "@gml/core";
+import { useFetch, useFetchState } from "../fetch.js";
 import { useI18n } from "../i18n.js";
 import { useHost } from "../host.js";
 import { useLibrary } from "../library.js";
-import { useSelection } from "../selection.js";
 import { usePlayback } from "../media.js";
-import { usePeaks } from "../peaks.js";
-import { FavoriteToggle, StatusBadge, Waveform } from "./primitives.js";
+import { placeholderPoster } from "../placeholder.js";
+import { useSelection } from "../selection.js";
+import { FavoriteToggle, FetchBadge, StatusBadge, Tag } from "./primitives.js";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="gml-field">
       <dt>{label}</dt>
-      <dd>{value}</dd>
+      <dd dir="auto">{value}</dd>
     </div>
   );
 }
 
-function ApplyButton({ asset }: { asset: MotionAsset | AudioAsset }) {
+/** The one button. Ready → import now; cloud → fetch with progress → import. */
+function ApplyButton({ asset }: { asset: LibraryAsset }) {
   const { t } = useI18n();
   const host = useHost();
   const { markUsed } = useLibrary();
-  const { applyNow, applying } = useSelection();
-
-  // Audio is inserted as a layer rather than applied to a selection, so it
-  // gets its own verb.
-  const label = isAudioAsset(asset)
-    ? t("add")
-    : host.capabilities.primaryAction === "place"
-      ? t("place")
-      : t("apply");
+  const { applyNow, applying, variantFor } = useSelection();
+  const state = useFetchState(asset, variantFor(asset));
+  const label = host.capabilities.primaryAction === "place" ? t("place") : t("apply");
+  const busy = applying;
 
   return (
     <button
       type="button"
-      className="gml-primary"
-      disabled={applying}
+      className="gml-primary gml-primary--wide"
+      disabled={busy}
+      data-state={state.status}
       data-testid="inspector-apply"
       onClick={() => {
         void applyNow(asset).then((r) => {
@@ -42,130 +41,67 @@ function ApplyButton({ asset }: { asset: MotionAsset | AudioAsset }) {
         });
       }}
     >
-      {label}
+      {busy && state.status === "fetching" ? `${t("stateFetching")}…` : label}
     </button>
   );
 }
 
-function MotionInspector({ asset }: { asset: MotionAsset }) {
-  const { t, locale, nameOf, duration } = useI18n();
+function MoreMenu({ asset }: { asset: LibraryAsset }) {
+  const { t } = useI18n();
   const host = useHost();
-  const { favorites, toggleFavorite, readinessOf } = useLibrary();
+  const fetch = useFetch();
+  const { variantFor } = useSelection();
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const deliverable = variantFor(asset);
 
+  if (!host.saveCopy && !host.revealSource) return null;
   return (
-    <div className="gml-inspector__body" data-testid="motion-inspector">
-      <div className="gml-inspector__preview">
-        <video
-          className="gml-inspector__video"
-          src={host.resolveUrl(asset, asset.preview)}
-          poster={host.resolveUrl(asset, asset.poster)}
-          muted
-          loop
-          playsInline
-          preload="none"
-          autoPlay
-          data-testid="inspector-video"
-        />
-      </div>
-
-      <h2 className="gml-inspector__name">{nameOf(asset)}</h2>
-      {asset.description && <p className="gml-inspector__desc">{asset.description}</p>}
-
-      <dl className="gml-inspector__fields">
-        <Field label={t("library")} value={CATEGORY_LABELS[asset.category][locale]} />
-        {asset.tags.length > 0 && <Field label="Tags" value={asset.tags.join(" · ")} />}
-        <Field label={t("duration")} value={duration(asset.duration)} />
-        <Field label={t("resolution")} value={`${asset.width}×${asset.height} · ${asset.fps} fps`} />
-        <Field
-          label={t("version")}
-          value={asset.status === "draft" ? `${asset.version} · ${t("draft")}` : asset.version}
-        />
-        <Field
-          label={t("footage")}
-          value={asset.dependencies.footage === "bundled" ? t("footageBundled") : t("footageExternal")}
-        />
-        {asset.dependencies.fonts.length > 0 && <Field label="Fonts" value={asset.dependencies.fonts.join(", ")} />}
-        {asset.dependencies.plugins.length > 0 && (
-          <Field label="Plugins" value={asset.dependencies.plugins.map((p) => p.name).join(", ")} />
-        )}
-        <Field label={t("lastUpdate")} value={asset.updatedAt.slice(0, 10)} />
-      </dl>
-
-      <StatusBadge readiness={readinessOf(asset)} />
-
-      <div className="gml-inspector__actions">
-        <ApplyButton asset={asset} />
-        <FavoriteToggle
-          active={favorites.has(asset.id)}
-          onToggle={() => toggleFavorite(asset.id)}
-          label={nameOf(asset)}
-        />
-      </div>
+    <div className="gml-more">
+      <button type="button" className="gml-iconbtn" aria-label={t("more")} aria-expanded={open} data-testid="more-menu" onClick={() => setOpen((o) => !o)}>
+        ⋯
+      </button>
+      {open && (
+        <ul className="gml-more__list" role="menu">
+          {host.saveCopy && (
+            <li>
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="save-copy"
+                onClick={async () => {
+                  setOpen(false);
+                  const localPath = await fetch.fetch(asset, deliverable);
+                  const r = await host.saveCopy!({ asset, deliverable, localPath });
+                  setNote(r.message ?? null);
+                }}
+              >
+                {t("saveCopy")}
+              </button>
+            </li>
+          )}
+          {host.revealSource && asset.source && (
+            <li>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={async () => {
+                  setOpen(false);
+                  const r = await host.revealSource!(asset);
+                  setNote(r.message ?? null);
+                }}
+              >
+                {t("source")}: {fileNameOf(asset.source.relPath)}
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+      {note && <p className="gml-inspector__note">{note}</p>}
     </div>
   );
 }
 
-function AudioInspector({ asset }: { asset: AudioAsset }) {
-  const { t, locale, nameOf, duration } = useI18n();
-  const host = useHost();
-  const playback = usePlayback();
-  const { favorites, toggleFavorite } = useLibrary();
-  const peaks = usePeaks(asset, (path) => host.resolveUrl(asset, path));
-
-  const mediaId = `${asset.id}@${asset.version}`;
-  const isPlaying = playback.isActive(mediaId);
-  const progress =
-    isPlaying && playback.audioDuration > 0 ? playback.audioProgress / playback.audioDuration : 0;
-
-  return (
-    <div className="gml-inspector__body" data-testid="audio-inspector">
-      <div className="gml-inspector__audiorow">
-        <button
-          type="button"
-          className="gml-play gml-play--lg"
-          aria-label={isPlaying ? "Pause" : "Play"}
-          data-testid="inspector-play"
-          onClick={() =>
-            isPlaying
-              ? playback.stop(mediaId)
-              : playback.play(mediaId, "audio", "inspector", host.resolveUrl(asset, asset.previewFile))
-          }
-        >
-          {isPlaying ? "❚❚" : "▶"}
-        </button>
-        <Waveform peaks={peaks} progress={progress} height={32} />
-      </div>
-
-      <h2 className="gml-inspector__name">{nameOf(asset)}</h2>
-      {asset.description && <p className="gml-inspector__desc">{asset.description}</p>}
-
-      <dl className="gml-inspector__fields">
-        <Field
-          label={t("library")}
-          value={[...new Set([CATEGORY_LABELS.audio[locale], asset.kind, ...asset.tags].filter(Boolean))].join(" · ")}
-        />
-        <Field label={t("duration")} value={duration(asset.duration)} />
-        <Field
-          label={t("resolution")}
-          value={`${(asset.sampleRate / 1000).toFixed(1)}kHz · ${asset.channels === 2 ? "Stereo" : "Mono"}`}
-        />
-        <Field label={t("version")} value={asset.version} />
-        <Field label={t("lastUpdate")} value={asset.updatedAt.slice(0, 10)} />
-      </dl>
-
-      <div className="gml-inspector__actions">
-        <ApplyButton asset={asset} />
-        <FavoriteToggle
-          active={favorites.has(asset.id)}
-          onToggle={() => toggleFavorite(asset.id)}
-          label={nameOf(asset)}
-        />
-      </div>
-    </div>
-  );
-}
-
-/** Branches on assetType so an audio asset never renders motion metadata. */
 export function Inspector() {
   const { t } = useI18n();
   const { selected } = useSelection();
@@ -178,11 +114,107 @@ export function Inspector() {
   }
   return (
     <aside className="gml-inspector" data-testid="inspector">
-      {isAudioAsset(selected) ? (
-        <AudioInspector asset={selected} />
-      ) : (
-        <MotionInspector asset={selected} />
-      )}
+      <InspectorBody key={assetKey(selected.id, selected.version)} asset={selected} />
     </aside>
+  );
+}
+
+/** Rendered only with an asset, so every hook below runs unconditionally. */
+function InspectorBody({ asset }: { asset: LibraryAsset }) {
+  const { t, locale, nameOf, duration } = useI18n();
+  const host = useHost();
+  const playback = usePlayback();
+  const { favorites, toggleFavorite, readinessOf, updateAvailable, projectVersions } = useLibrary();
+  const { variantFor, chooseVariant } = useSelection();
+  const mediaRef = useRef<HTMLDivElement | null>(null);
+  const previewUrl = host.previewUrl(asset);
+  const deliverable = variantFor(asset);
+  const fetchState = useFetchState(asset, deliverable);
+  const readiness = readinessOf(asset);
+  const inProject = projectVersions.get(asset.id);
+  const mediaId = assetKey(asset.id, asset.version);
+
+  // The inspector takes the shared video while it is open; hovering a card
+  // steals it briefly and it returns on leave.
+  useEffect(() => {
+    if (!previewUrl || !mediaRef.current) return;
+    playback.play(mediaId, previewUrl, mediaRef.current, "inspector");
+    return () => playback.stop(mediaId, "inspector");
+  }, [mediaId, previewUrl]);
+
+  useEffect(() => {
+    if (!previewUrl || !mediaRef.current || playback.activeId !== null) return;
+    playback.play(mediaId, previewUrl, mediaRef.current, "inspector");
+  }, [playback.activeId]);
+
+  return (
+    <div className="gml-inspector__body" data-testid="asset-inspector">
+
+        <div className="gml-inspector__preview" ref={mediaRef}>
+          <img className="gml-inspector__poster" src={host.posterUrl(asset) ?? placeholderPoster(asset.id, asset.category)} alt="" draggable={false} />
+        </div>
+
+        <div className="gml-inspector__title">
+          <h2 className="gml-inspector__name" dir="auto">{nameOf(asset)}</h2>
+          <FavoriteToggle active={favorites.has(asset.id)} onToggle={() => toggleFavorite(asset.id)} label={nameOf(asset)} />
+        </div>
+        <p className="gml-inspector__kind">
+          {CATEGORY_LABELS[asset.category][locale]} · {asset.kind === "comp" ? t("kindComp") : asset.kind === "still" ? t("kindStill") : t("kindVideoAlpha")}
+          {asset.status === "draft" && <Tag tone="warn">{t("draft")}</Tag>}
+          {updateAvailable(asset) && <Tag tone="accent" testId="update-tag">{t("updateAvailable")}</Tag>}
+        </p>
+
+        {asset.deliverables.length > 1 && (
+          <label className="gml-inspector__variant">
+            <span>{t("variant")}</span>
+            <select value={deliverable.relPath} onChange={(e) => chooseVariant(asset, e.target.value)} data-testid="variant-select">
+              {asset.deliverables.map((d) => (
+                <option key={d.relPath} value={d.relPath}>
+                  {deliverableLabel(d)} · {formatBytes(d.bytes)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <div className="gml-inspector__state">
+          <FetchBadge state={fetchState} />
+        </div>
+
+        <dl className="gml-inspector__fields">
+          <Field label={t("size")} value={formatBytes(deliverable.bytes)} />
+          {deliverable.codec && (
+            <Field
+              label={t("codec")}
+              value={`${deliverable.codec}${deliverable.width ? ` · ${deliverable.width}×${deliverable.height}` : ""}${deliverable.fps ? ` · ${deliverable.fps} fps` : ""}`}
+            />
+          )}
+          {asset.comp && (
+            <>
+              <Field label={t("resolution")} value={`${asset.comp.width}×${asset.comp.height} · ${asset.comp.fps} fps`} />
+              <Field label={t("duration")} value={duration(asset.comp.duration)} />
+            </>
+          )}
+          <Field label={t("version")} value={`v${asset.version}${inProject ? ` · in project: v${[...new Set(inProject)].join(", v")}` : ""}`} />
+          {asset.requires.fonts.length > 0 && <Field label="Fonts" value={asset.requires.fonts.join(", ")} />}
+          {asset.source && <Field label={t("source")} value={fileNameOf(asset.source.relPath)} />}
+          <Field label={t("lastUpdate")} value={asset.updatedAt.slice(0, 10)} />
+        </dl>
+
+        {deliverable.warnings.length > 0 && (
+          <p className="gml-inspector__warn" data-testid="render-warnings">
+            {deliverable.warnings.includes("oversized") && `${t("needsRerender")} — ${formatBytes(deliverable.bytes)} · `}
+            {deliverable.warnings.includes("prores-xq") && "ProRes 4444 XQ · "}
+            {deliverable.warnings.includes("4k") && "4K"}
+          </p>
+        )}
+
+        {asset.kind === "comp" && <StatusBadge readiness={readiness} />}
+
+        <div className="gml-inspector__actions">
+          <ApplyButton asset={asset} />
+          <MoreMenu asset={asset} />
+        </div>
+    </div>
   );
 }

@@ -1,25 +1,27 @@
 /**
- * Traceability stamp written to an AE layer/project-item `comment` and read
- * back to detect reuse and version drift. Also the value carried by the
- * Illustrator GML_ID / GML_VERSION tags.
+ * Traceability stamp written to an AE layer / footage item `comment` and read
+ * back to detect reuse, pin cached files, and spot version drift. Also the
+ * value carried by the Illustrator GML_ID / GML_VERSION tags.
+ *
+ *   gml:transitions/arrows@v3
  */
 
-const STAMP_RE = /^gml:([a-z0-9_-]+)@(\d+\.\d+\.\d+)$/;
+const STAMP_RE = /^gml:([a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)*)@v(\d+)$/;
 
 export interface Stamp {
   id: string;
-  version: string;
+  version: number;
 }
 
-export function encodeStamp(id: string, version: string): string {
-  return `gml:${id}@${version}`;
+export function encodeStamp(id: string, version: number): string {
+  return `gml:${id}@v${version}`;
 }
 
 export function decodeStamp(value: string | null | undefined): Stamp | null {
   if (!value) return null;
   const m = STAMP_RE.exec(value.trim());
   if (!m) return null;
-  return { id: m[1] as string, version: m[2] as string };
+  return { id: m[1] as string, version: Number(m[2]) };
 }
 
 /**

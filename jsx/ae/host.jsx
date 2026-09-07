@@ -1,10 +1,10 @@
 /**
  * After Effects host functions.
  *
- * Reads (target, environment, comp and project inspection) never modify the
- * project. gmlApply imports and adds layers inside one undo group. The collect
- * step that bundles footage into a package is not here yet: it waits on
- * Spike A, so packages built from these functions carry footage as-is.
+ * Reads never modify the project. gmlApply imports fully materialised local
+ * files (never anything on the Shared Drive) and adds layers inside one undo
+ * group. gmlInspectAep reads the comps out of a project file on disk so the
+ * indexer can expand master projects without opening them.
  */
 
 function gmlHostInfo() {
@@ -39,7 +39,7 @@ function gmlGetTarget() {
 }
 
 /**
- * What is installed here, so the panel can mark an asset Requires Font or
+ * What is installed here, so the panel can mark a comp Requires Font or
  * Requires Plugin before anyone tries to apply it.
  */
 function gmlGetEnvironment() {
@@ -51,8 +51,7 @@ function gmlGetEnvironment() {
         // which the panel treats as "unknown" rather than "missing".
         //
         // allFonts is documented as an array of arrays — one inner array per
-        // font family — so each entry must be unwrapped. Reading postScriptName
-        // off the family array would silently yield an empty list.
+        // font family — so each entry must be unwrapped.
         if (app.fonts && app.fonts.allFonts) {
             var all = app.fonts.allFonts;
             for (var i = 0; i < all.length; i++) {
@@ -75,72 +74,180 @@ function gmlGetEnvironment() {
 }
 
 // ---------------------------------------------------------------------------
-// Inspection — what the panel needs to know before it can package a comp.
+// Stamps — gml:<id>@v<n> in comments; how reuse, pinning and updates work.
+// ---------------------------------------------------------------------------
+
+function gmlStampIn(comment) {
+    var text = String(comment || "");
+    var match = /gml:[a-z0-9][a-z0-9._\-\/]*@v\d+/.exec(text);
+    return match ? match[0] : null;
+}
+
+/** Every stamp in the project: on items and on layers. */
+function gmlProjectStamps() {
+    try {
+        var seen = {};
+        var out = [];
+        function add(comment) {
+            var stamp = gmlStampIn(comment);
+            if (stamp && !seen[stamp]) { seen[stamp] = true; out[out.length] = stamp; }
+        }
+        for (var i = 1; i <= app.project.numItems; i++) {
+            var item = app.project.item(i);
+            try { add(item.comment); } catch (eI) { /* folders without comments */ }
+            if (item instanceof CompItem) {
+                for (var L = 1; L <= item.numLayers; L++) {
+                    try { add(item.layer(L).comment); } catch (eL) { /* ignore */ }
+                }
+            }
+        }
+        return gmlOk({ stamps: out });
+    } catch (e) {
+        return gmlErr("gmlProjectStamps failed", e);
+    }
+}
+
+function gmlFindItemByStamp(stamp) {
+    for (var i = 1; i <= app.project.numItems; i++) {
+        var item = app.project.item(i);
+        try {
+            if (gmlStampIn(item.comment) === stamp && !(item instanceof FolderItem)) { return item; }
+        } catch (e) { /* ignore */ }
+    }
+    return null;
+}
+
+function gmlLibraryFolder() {
+    for (var i = 1; i <= app.project.numItems; i++) {
+        var item = app.project.item(i);
+        if (item instanceof FolderItem && item.name === "GML Library") { return item; }
+    }
+    return app.project.items.addFolder("GML Library");
+}
+
+function gmlCollectComps(container, out) {
+    if (container instanceof CompItem) { out[out.length] = container; return; }
+    if (!(container instanceof FolderItem)) { return; }
+    for (var i = 1; i <= container.numItems; i++) { gmlCollectComps(container.item(i), out); }
+}
+
+function gmlFindCompIn(container, name) {
+    var comps = [];
+    gmlCollectComps(container, comps);
+    for (var i = 0; i < comps.length; i++) { if (comps[i].name === name) { return comps[i]; } }
+    return comps.length > 0 ? comps[0] : null;
+}
+
+// ---------------------------------------------------------------------------
+// Apply — import the local file and add it to the active comp.
+// ---------------------------------------------------------------------------
+
+function gmlApplyAlpha(item, alpha) {
+    if (alpha !== "straight" && alpha !== "premultiplied") { return; }
+    try {
+        var source = item.mainSource;
+        if (source && source.hasAlpha) {
+            source.alphaMode = alpha === "straight" ? AlphaMode.STRAIGHT : AlphaMode.PREMULTIPLIED;
+        }
+    } catch (e) { /* AE will keep its own guess */ }
+}
+
+/**
+ * payload.items: [{ id, version, kind, name, localPath, alpha, compName }]
+ *
+ * Every localPath is a complete file in the local cache. An item already
+ * stamped gml:<id>@v<n> in the project is reused, so applying twice never
+ * yields "Coin 2"; a different version of the same id is left alone and the
+ * requested one is imported alongside — never a silent update.
+ */
+function gmlApply(payload) {
+    var items = payload && payload.items ? payload.items : [];
+    if (items.length === 0) { return gmlErr("Nothing to apply"); }
+
+    var target = app.project.activeItem;
+    if (!target || !(target instanceof CompItem)) {
+        return gmlErr("Open a composition (or select one in the Project panel) before applying.");
+    }
+
+    var added = [], reused = [], imported = [], warnings = [];
+    app.beginUndoGroup("GML Apply");
+    try {
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            var stamp = "gml:" + it.id + "@v" + it.version;
+            var file = new File(it.localPath);
+            if (!file.exists) {
+                throw new Error("Not in the local cache: " + file.fsName + " — fetch it first.");
+            }
+
+            var projectItem = gmlFindItemByStamp(stamp);
+            if (projectItem) {
+                reused[reused.length] = String(projectItem.name);
+            } else {
+                var importedItem = app.project.importFile(new ImportOptions(file));
+                if (it.kind === "comp") {
+                    projectItem = gmlFindCompIn(importedItem, it.compName);
+                    if (!projectItem) { throw new Error("No composition named \"" + it.compName + "\" in " + file.displayName); }
+                    if (importedItem instanceof FolderItem) {
+                        importedItem.name = "GML " + it.name + " v" + it.version;
+                        importedItem.comment = stamp;
+                        importedItem.parentFolder = gmlLibraryFolder();
+                    }
+                } else {
+                    projectItem = importedItem;
+                    projectItem.name = it.name + " v" + it.version;
+                    projectItem.parentFolder = gmlLibraryFolder();
+                    gmlApplyAlpha(projectItem, it.alpha);
+                }
+                projectItem.comment = stamp;
+                imported[imported.length] = String(projectItem.name);
+            }
+
+            if (projectItem instanceof CompItem && projectItem.id === target.id) {
+                warnings[warnings.length] = "Skipped " + it.name + ": cannot add a comp into itself.";
+                continue;
+            }
+
+            var layer = target.layers.add(projectItem);
+            layer.startTime = target.time;
+            layer.comment = stamp;
+            layer.name = String(it.name);
+            added[added.length] = String(layer.name);
+        }
+    } catch (e) {
+        app.endUndoGroup();
+        return gmlErr("Apply failed", e);
+    }
+    app.endUndoGroup();
+
+    var summary = added.length + " layer(s) added to " + target.name;
+    if (reused.length > 0) { summary += " · reused " + reused.length; }
+    if (imported.length > 0) { summary += " · imported " + imported.length; }
+    return gmlOk({
+        applied: true,
+        added: added,
+        reused: reused,
+        imported: imported,
+        warnings: warnings,
+        message: summary + (warnings.length > 0 ? " · " + warnings.join(" ") : "")
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Inspection — comps inside a project file, for the indexer.
 // ---------------------------------------------------------------------------
 
 function gmlFootageSnapshot(item) {
     var source = item.mainSource;
-    var snap = {
-        itemId: item.id,
-        name: String(item.name),
-        sourceKind: "file",
-        isStill: false,
-        hasVideo: item.hasVideo === true,
-        hasAudio: item.hasAudio === true,
-        hasProxy: item.useProxy === true
-    };
+    var snap = { name: String(item.name), sourceKind: "file" };
     if (source instanceof PlaceholderSource) { snap.sourceKind = "placeholder"; return snap; }
     if (source instanceof SolidSource) { snap.sourceKind = "solid"; return snap; }
-    if (!(source instanceof FileSource)) { snap.sourceKind = "placeholder"; return snap; }
-
-    snap.isStill = source.isStill === true;
     if (source.file) { snap.filePath = String(source.file.fsName); }
-    if (item.footageMissing) {
-        snap.missingFootagePath = source.missingFootagePath ? String(source.missingFootagePath) : (snap.filePath || "?");
-    }
+    if (item.footageMissing) { snap.missing = true; }
     return snap;
 }
 
-/**
- * Everything reachable from one comp: nested comps are followed, so the
- * footage list is what this comp actually depends on — not the whole project.
- */
-function gmlInspectComp() {
-    try {
-        var comp = app.project.activeItem;
-        if (!comp || !(comp instanceof CompItem)) {
-            return gmlErr("Select a composition first (click it in the Project panel or open it).");
-        }
-
-        var deps = gmlWalkComp(comp);
-
-        var compNames = [];
-        for (var i = 1; i <= app.project.numItems; i++) {
-            var item = app.project.item(i);
-            if (item instanceof CompItem) { compNames[compNames.length] = String(item.name); }
-        }
-
-        return gmlOk({
-            compName: String(comp.name),
-            compId: comp.id,
-            fps: comp.frameRate,
-            width: comp.width,
-            height: comp.height,
-            duration: comp.duration,
-            projectPath: app.project.file ? String(app.project.file.fsName) : null,
-            projectDirty: app.project.dirty === true,
-            aeVersion: String(app.version),
-            compNames: compNames,
-            footage: deps.footage,
-            fonts: deps.fonts,
-            effects: deps.effects
-        });
-    } catch (e) {
-        return gmlErr("gmlInspectComp failed", e);
-    }
-}
-
-/** Collects everything reachable from a comp — shared by the two inspectors. */
+/** Everything reachable from one comp: nested comps are followed. */
 function gmlWalkComp(comp) {
     var seen = {};
     var footageById = {};
@@ -171,8 +278,7 @@ function gmlWalkComp(comp) {
                 var parade = layer.property("ADBE Effect Parade");
                 if (parade) {
                     for (var E = 1; E <= parade.numProperties; E++) {
-                        var fx = parade.property(E);
-                        effects[String(fx.matchName)] = String(fx.name);
+                        effects[String(parade.property(E).matchName)] = true;
                     }
                 }
             } catch (eFx) { /* layer types without an effect parade */ }
@@ -183,24 +289,14 @@ function gmlWalkComp(comp) {
     var fontList = [];
     for (var f in fonts) { if (fonts.hasOwnProperty(f)) { fontList[fontList.length] = f; } }
     var effectList = [];
-    for (var m in effects) {
-        if (effects.hasOwnProperty(m)) { effectList[effectList.length] = { matchName: m, name: effects[m] }; }
-    }
+    for (var m in effects) { if (effects.hasOwnProperty(m)) { effectList[effectList.length] = m; } }
     return { footage: footage, fonts: fontList, effects: effectList };
-}
-
-function gmlCollectComps(container, out) {
-    if (container instanceof CompItem) { out[out.length] = container; return; }
-    if (!(container instanceof FolderItem)) { return; }
-    for (var i = 1; i <= container.numItems; i++) { gmlCollectComps(container.item(i), out); }
 }
 
 /**
  * Reads the comps inside a project file on disk without opening it: the file
  * is imported into the current project as a folder, read, and removed again,
- * all inside one undo group and with dialogs suppressed. This is what lets
- * ready-made .aep files dropped into the library's inbox be packaged without
- * the designer opening each one.
+ * inside one undo group and with dialogs suppressed.
  */
 function gmlInspectAep(payload) {
     var path = payload && payload.path;
@@ -216,28 +312,19 @@ function gmlInspectAep(payload) {
         var comps = [];
         gmlCollectComps(imported, comps);
 
-        var names = [];
-        for (var n = 0; n < comps.length; n++) { names[names.length] = String(comps[n].name); }
-
         var result = [];
         for (var i = 0; i < comps.length; i++) {
             var comp = comps[i];
             var deps = gmlWalkComp(comp);
             result[result.length] = {
                 compName: String(comp.name),
-                compId: comp.id,
                 fps: comp.frameRate,
                 width: comp.width,
                 height: comp.height,
                 duration: comp.duration,
-                projectPath: String(file.fsName),
-                projectDirty: false,
-                aeVersion: String(app.version),
-                compNames: names,
-                footage: deps.footage,
+                numLayers: comp.numLayers,
                 fonts: deps.fonts,
-                effects: deps.effects,
-                numLayers: comp.numLayers
+                effects: deps.effects
             };
         }
 
@@ -254,125 +341,16 @@ function gmlInspectAep(payload) {
     }
 }
 
-/** Saves in place. A never-saved project would open a dialog, so it is refused instead. */
-function gmlSaveProject() {
+/** Shows a file in Finder / Explorer — used for "show source". */
+function gmlReveal(payload) {
     try {
-        if (!app.project.file) {
-            return gmlErr("The project has never been saved. Use File > Save As first.");
-        }
-        app.project.save();
-        return gmlOk({ path: String(app.project.file.fsName), dirty: app.project.dirty === true });
+        var path = payload && payload.path;
+        var file = new File(path);
+        var folder = file.exists ? file.parent : new Folder(path);
+        if (!folder || !folder.exists) { return gmlErr("Not found: " + path); }
+        folder.execute();
+        return gmlOk({ opened: String(folder.fsName) });
     } catch (e) {
-        return gmlErr("gmlSaveProject failed", e);
+        return gmlErr("gmlReveal failed", e);
     }
-}
-
-// ---------------------------------------------------------------------------
-// Apply — import the package's comp and add it to the active comp.
-// ---------------------------------------------------------------------------
-
-function gmlFindCompByComment(prefix, exact) {
-    for (var i = 1; i <= app.project.numItems; i++) {
-        var item = app.project.item(i);
-        if (!(item instanceof CompItem)) { continue; }
-        var comment = String(item.comment || "");
-        if (exact ? comment === prefix : comment.indexOf(prefix) === 0) { return item; }
-    }
-    return null;
-}
-
-function gmlFindCompIn(container, name) {
-    if (container instanceof CompItem) { return container.name === name ? container : null; }
-    if (!(container instanceof FolderItem)) { return null; }
-    for (var i = 1; i <= container.numItems; i++) {
-        var found = gmlFindCompIn(container.item(i), name);
-        if (found) { return found; }
-    }
-    return null;
-}
-
-/**
- * One undo group for the whole batch, so a single Ctrl+Z removes everything.
- *
- * Reuse rule: a comp already stamped gml:<id>@<version> is used as-is, so
- * applying twice never yields "GML_x 2". A different version of the same id is
- * left untouched and the requested version is imported alongside it — never a
- * silent update.
- */
-function gmlApply(payload) {
-    var refs = payload && payload.refs ? payload.refs : [];
-    if (refs.length === 0) { return gmlErr("Nothing to apply"); }
-    if (!refs[0].packagePath) {
-        return gmlErr("No library package for this asset — open Settings and choose the library folder.");
-    }
-
-    var target = app.project.activeItem;
-    if (!target || !(target instanceof CompItem)) {
-        return gmlErr("Open a composition (or select one in the Project panel) before applying.");
-    }
-
-    var added = [], reused = [], imported = [], warnings = [];
-    app.beginUndoGroup("GML Apply");
-    try {
-        for (var i = 0; i < refs.length; i++) {
-            var ref = refs[i];
-            var stamp = "gml:" + ref.id + "@" + ref.version;
-
-            var comp = gmlFindCompByComment(stamp, true);
-            if (comp) {
-                reused[reused.length] = String(comp.name);
-            } else {
-                var other = gmlFindCompByComment("gml:" + ref.id + "@", false);
-                if (other) {
-                    warnings[warnings.length] = "Project already has " + String(other.comment) +
-                        "; " + ref.version + " was imported separately, nothing was replaced.";
-                }
-
-                var file = new File(ref.packagePath + "/" + (ref.source || "source.aep"));
-                if (!file.exists) {
-                    throw new Error("Package file not found: " + file.fsName + " (still syncing from Drive?)");
-                }
-                var item = app.project.importFile(new ImportOptions(file));
-                comp = gmlFindCompIn(item, ref.compName);
-                if (!comp) {
-                    throw new Error("Comp \"" + ref.compName + "\" is not inside " + file.displayName);
-                }
-                comp.comment = stamp;
-                if (item instanceof FolderItem) {
-                    item.name = "GML_" + ref.id + "_v" + ref.version;
-                    item.comment = stamp;
-                }
-                imported[imported.length] = String(comp.name);
-            }
-
-            if (comp.id === target.id) {
-                warnings[warnings.length] = "Skipped " + ref.id + ": cannot add a comp into itself.";
-                continue;
-            }
-            if (ref.footage === "external") {
-                warnings[warnings.length] = ref.id + " has un-bundled footage; it only renders where it was published.";
-            }
-
-            var layer = target.layers.add(comp);
-            layer.startTime = target.time;
-            layer.comment = stamp;
-            added[added.length] = String(layer.name);
-        }
-    } catch (e) {
-        app.endUndoGroup();
-        return gmlErr("Apply failed", e);
-    }
-    app.endUndoGroup();
-
-    var summary = added.length + " layer(s) added to " + target.name;
-    if (reused.length > 0) { summary += " · reused " + reused.length; }
-    if (imported.length > 0) { summary += " · imported " + imported.length; }
-    return gmlOk({
-        applied: true,
-        added: added,
-        reused: reused,
-        imported: imported,
-        warnings: warnings,
-        message: summary + (warnings.length > 0 ? " · " + warnings.join(" ") : "")
-    });
 }

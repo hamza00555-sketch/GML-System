@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReadinessResult } from "@gml/core";
+import { percent, type FetchState } from "../fetch.js";
 import { useI18n } from "../i18n.js";
 
 export const DRAG_MIME = "application/x-gml-asset";
 
-export function SearchField({
-  value,
-  onChange,
-  compact = false,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-  compact?: boolean;
-}) {
+export function SearchField({ value, onChange, compact = false }: { value: string; onChange: (next: string) => void; compact?: boolean }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState(value);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -29,6 +22,7 @@ export function SearchField({
         value={draft}
         placeholder={t("search")}
         aria-label={t("search")}
+        dir="auto"
         onChange={(e) => {
           const next = e.target.value;
           setDraft(next);
@@ -43,12 +37,7 @@ export function SearchField({
 export function StatusBadge({ readiness }: { readiness: ReadinessResult }) {
   const { t } = useI18n();
   const label =
-    readiness.status === "safe"
-      ? t("gmlSafe")
-      : readiness.status === "requires-plugin"
-        ? t("requiresPlugin")
-        : t("requiresFont");
-
+    readiness.status === "safe" ? t("gmlSafe") : readiness.status === "requires-plugin" ? t("requiresPlugin") : t("requiresFont");
   const detail =
     readiness.status === "requires-plugin"
       ? readiness.missingPlugins.join(", ")
@@ -57,27 +46,47 @@ export function StatusBadge({ readiness }: { readiness: ReadinessResult }) {
         : "";
 
   return (
-    <span
-      className="gml-status"
-      data-status={readiness.status}
-      title={detail || label}
-      data-testid={`status-${readiness.status}`}
-    >
+    <span className="gml-status" data-status={readiness.status} title={detail || label} data-testid={`status-${readiness.status}`}>
       <span className="gml-status__dot" aria-hidden="true" />
       {label}
     </span>
   );
 }
 
-export function FavoriteToggle({
-  active,
-  onToggle,
-  label,
-}: {
-  active: boolean;
-  onToggle: () => void;
-  label: string;
-}) {
+/** ☁ cloud · ⬇ fetching with a percentage · ✓ ready. */
+export function FetchBadge({ state, compact = false }: { state: FetchState; compact?: boolean }) {
+  const { t } = useI18n();
+  const label =
+    state.status === "ready"
+      ? t("stateReady")
+      : state.status === "fetching"
+        ? `${t("stateFetching")} ${percent(state)}%`
+        : state.status === "failed"
+          ? t("stateFailed")
+          : t("stateCloud");
+  const icon = state.status === "ready" ? "✓" : state.status === "fetching" ? "⬇" : state.status === "failed" ? "!" : "☁";
+  return (
+    <span className="gml-fetch" data-status={state.status} title={state.error ?? label} data-testid={`fetch-${state.status}`}>
+      <span className="gml-fetch__icon" aria-hidden="true">{icon}</span>
+      {!compact && <span className="gml-fetch__label">{state.status === "fetching" ? `${percent(state)}%` : label}</span>}
+      {state.status === "fetching" && (
+        <span className="gml-fetch__bar" aria-hidden="true">
+          <span className="gml-fetch__fill" style={{ inlineSize: `${percent(state)}%` }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function Tag({ tone = "neutral", children, testId }: { tone?: "neutral" | "warn" | "accent"; children: React.ReactNode; testId?: string }) {
+  return (
+    <span className="gml-tag" data-tone={tone} data-testid={testId}>
+      {children}
+    </span>
+  );
+}
+
+export function FavoriteToggle({ active, onToggle, label }: { active: boolean; onToggle: () => void; label: string }) {
   return (
     <button
       type="button"
@@ -95,63 +104,9 @@ export function FavoriteToggle({
   );
 }
 
-/**
- * Peaks are computed at publish time and shipped as peaks.json — the panel
- * never decodes audio to draw this. Without peaks it degrades to a plain
- * progress bar rather than doing analysis work at runtime.
- */
-export function Waveform({
-  peaks,
-  progress = 0,
-  height = 20,
-}: {
-  peaks?: readonly number[];
-  progress?: number;
-  height?: number;
-}) {
-  if (!peaks || peaks.length === 0) {
-    return (
-      <div className="gml-wave gml-wave--plain" style={{ height }} data-testid="waveform-plain">
-        <div className="gml-wave__fill" style={{ inlineSize: `${progress * 100}%` }} />
-      </div>
-    );
-  }
-
-  const played = Math.round(peaks.length * progress);
+export function IconButton({ label, icon, onClick, active }: { label: string; icon: string; onClick: () => void; active?: boolean }) {
   return (
-    <div className="gml-wave" style={{ height }} data-testid="waveform-peaks">
-      {peaks.map((peak, i) => (
-        <span
-          key={i}
-          className="gml-wave__bar"
-          data-played={i < played || undefined}
-          style={{ blockSize: `${Math.max(6, Math.min(100, peak * 100))}%` }}
-        />
-      ))}
-    </div>
-  );
-}
-
-export function IconButton({
-  label,
-  icon,
-  onClick,
-  active,
-}: {
-  label: string;
-  icon: string;
-  onClick: () => void;
-  active?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      className="gml-iconbtn"
-      title={label}
-      aria-label={label}
-      data-active={active || undefined}
-      onClick={onClick}
-    >
+    <button type="button" className="gml-iconbtn" title={label} aria-label={label} data-active={active || undefined} onClick={onClick}>
       <span aria-hidden="true">{icon}</span>
     </button>
   );

@@ -6,7 +6,7 @@ import {
   directionFor,
   formatDuration,
   t,
-  type GmlAsset,
+  type LibraryAsset,
   type Locale,
   type StringKey,
 } from "@gml/core";
@@ -24,7 +24,7 @@ export interface I18nValue {
   dir: "ltr" | "rtl";
   setLocale: (locale: Locale) => void;
   t: (key: StringKey) => string;
-  nameOf: (asset: GmlAsset) => string;
+  nameOf: (asset: Pick<LibraryAsset, "name" | "nameAr">) => string;
   duration: (seconds: number) => string;
 }
 

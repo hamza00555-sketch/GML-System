@@ -1,9 +1,9 @@
 export * from "./useWorkspaceMode.js";
 export * from "./i18n.js";
 export * from "./host.js";
+export * from "./fetch.js";
 export * from "./library.js";
 export * from "./media.js";
-export * from "./peaks.js";
 export * from "./selection.js";
 export * from "./PanelRoot.js";
 export * from "./layouts/index.js";
@@ -14,3 +14,4 @@ export * from "./components/inspector.js";
 export * from "./components/dropzone.js";
 export * from "./components/toolbar.js";
 export * from "./placeholder.js";
+export * from "./testing.js";

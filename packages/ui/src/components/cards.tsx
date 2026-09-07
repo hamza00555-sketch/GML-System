@@ -1,184 +1,90 @@
-import { useState } from "react";
-import { isAudioAsset, type AudioAsset, type GmlAsset, type MotionAsset } from "@gml/core";
+import { useRef } from "react";
+import { assetKey, type LibraryAsset } from "@gml/core";
+import { useFetchState } from "../fetch.js";
 import { useI18n } from "../i18n.js";
 import { useHost } from "../host.js";
 import { useLibrary } from "../library.js";
+import { useHoverIntent, usePlayback } from "../media.js";
+import { placeholderPoster } from "../placeholder.js";
 import { useSelection } from "../selection.js";
-import { usePlayback, useHoverIntent } from "../media.js";
-import { usePeaks } from "../peaks.js";
-import { DRAG_MIME, FavoriteToggle, StatusBadge, Waveform } from "./primitives.js";
+import { DRAG_MIME, FavoriteToggle, FetchBadge, StatusBadge, Tag } from "./primitives.js";
 
 export type CardDensity = "list" | "grid";
 
-function useCardBehaviour(asset: GmlAsset) {
-  const { favorites, toggleFavorite, markUsed, readinessOf } = useLibrary();
-  const { selected, select, applyNow } = useSelection();
-
-  return {
-    isFavorite: favorites.has(asset.id),
-    toggleFavorite: () => toggleFavorite(asset.id),
-    readiness: readinessOf(asset),
-    isSelected: selected?.id === asset.id,
-    select: () => select(asset),
-    /** Single click is the fast path: apply straight away, no queue. */
-    quickApply: async () => {
-      select(asset);
-      const result = await applyNow(asset);
-      if (result.ok) markUsed(asset.id);
-    },
-    dragProps: {
-      draggable: true,
-      onDragStart: (e: React.DragEvent) => {
-        e.dataTransfer.setData(DRAG_MIME, `${asset.id}@${asset.version}`);
-        e.dataTransfer.effectAllowed = "copy";
-      },
-    },
-  };
-}
-
-export function MotionCard({ asset, density = "grid" }: { asset: MotionAsset; density?: CardDensity }) {
-  const { t, nameOf, duration } = useI18n();
+/**
+ * A card is an image. The single shared <video> is portalled into the card's
+ * media box only while it is hovered — every other card stays a poster.
+ */
+export function AssetCard({ asset, density = "grid" }: { asset: LibraryAsset; density?: CardDensity }) {
+  const { t, nameOf } = useI18n();
   const host = useHost();
   const playback = usePlayback();
-  const behaviour = useCardBehaviour(asset);
-  const [failed, setFailed] = useState(false);
+  const { favorites, toggleFavorite, markUsed, readinessOf, updateAvailable } = useLibrary();
+  const { selected, select, applyNow, variantFor } = useSelection();
+  const deliverable = variantFor(asset);
+  const fetchState = useFetchState(asset, deliverable);
+  const mediaRef = useRef<HTMLDivElement | null>(null);
 
-  const mediaId = `${asset.id}@${asset.version}`;
-  // Only the active card mounts a <video>; every other card shows its poster.
-  // That is what keeps element count independent of how many cards are on screen.
+  const mediaId = assetKey(asset.id, asset.version);
+  const previewUrl = host.previewUrl(asset);
+  const posterUrl = host.posterUrl(asset) ?? placeholderPoster(asset.id, asset.category);
   const isPlaying = playback.isActive(mediaId, "grid");
+  const readiness = readinessOf(asset);
+  const oversized = asset.deliverables.some((d) => d.warnings.includes("oversized"));
 
   const hover = useHoverIntent(
-    () => playback.play(mediaId, "video", "grid"),
-    () => playback.stop(mediaId),
+    () => {
+      if (previewUrl && mediaRef.current) playback.play(mediaId, previewUrl, mediaRef.current, "grid");
+    },
+    () => playback.stop(mediaId, "grid"),
   );
-
-  const posterUrl = host.resolveUrl(asset, asset.poster);
-  // preview.gif is the guaranteed fallback: it needs no codec at all. Without
-  // one, a failed decode simply leaves the poster showing.
-  const videoUrl = host.resolveUrl(asset, failed ? (asset.previewGif ?? asset.poster) : asset.preview);
 
   return (
     <article
-      className="gml-card gml-card--motion"
+      className="gml-card"
       data-density={density}
-      data-selected={behaviour.isSelected || undefined}
+      data-kind={asset.kind}
+      data-selected={selected?.id === asset.id || undefined}
+      data-playing={isPlaying || undefined}
       data-testid={`card-${asset.id}`}
-      data-asset-type="motion"
-      onClick={behaviour.select}
-      onDoubleClick={() => void behaviour.quickApply()}
-      {...behaviour.dragProps}
+      onClick={() => select(asset)}
+      onDoubleClick={() => {
+        select(asset);
+        void applyNow(asset).then((r) => {
+          if (r.ok) markUsed(asset.id);
+        });
+      }}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DRAG_MIME, mediaId);
+        e.dataTransfer.effectAllowed = "copy";
+      }}
       {...hover}
     >
-      <div className="gml-card__media">
-        {isPlaying && !failed ? (
-          <video
-            className="gml-card__video"
-            src={videoUrl}
-            poster={posterUrl}
-            muted
-            loop
-            playsInline
-            preload="none"
-            autoPlay
-            data-testid="grid-video"
-            onError={() => setFailed(true)}
-          />
-        ) : (
-          <img className="gml-card__poster" src={posterUrl} alt="" loading="lazy" />
+      <div className="gml-card__media" ref={mediaRef}>
+        <img className="gml-card__poster" src={posterUrl} alt="" loading="lazy" draggable={false} />
+        {density === "grid" && (
+          <span className="gml-card__state">
+            <FetchBadge state={fetchState} compact />
+          </span>
         )}
-        <FavoriteToggle
-          active={behaviour.isFavorite}
-          onToggle={behaviour.toggleFavorite}
-          label={nameOf(asset)}
-        />
+        <FavoriteToggle active={favorites.has(asset.id)} onToggle={() => toggleFavorite(asset.id)} label={nameOf(asset)} />
       </div>
       <div className="gml-card__meta">
-        <span className="gml-card__name" title={nameOf(asset)}>
+        <span className="gml-card__name" title={nameOf(asset)} dir="auto">
           {nameOf(asset)}
         </span>
-        <span className="gml-card__row">
-          <span className="gml-card__duration">
-            {duration(asset.duration)}
-            {asset.status === "draft" && (
-              <span className="gml-tag gml-tag--draft" data-testid="draft-tag">
-                {t("draft")}
-              </span>
-            )}
-          </span>
-          <StatusBadge readiness={behaviour.readiness} />
-        </span>
-      </div>
-    </article>
-  );
-}
-
-export function AudioCard({ asset, density = "grid" }: { asset: AudioAsset; density?: CardDensity }) {
-  const { nameOf, duration } = useI18n();
-  const host = useHost();
-  const playback = usePlayback();
-  const behaviour = useCardBehaviour(asset);
-
-  const mediaId = `${asset.id}@${asset.version}`;
-  const peaks = usePeaks(asset, (path) => host.resolveUrl(asset, path));
-
-  const isPlaying = playback.isActive(mediaId);
-  const progress =
-    isPlaying && playback.audioDuration > 0 ? playback.audioProgress / playback.audioDuration : 0;
-
-  return (
-    <article
-      className="gml-card gml-card--audio"
-      data-density={density}
-      data-selected={behaviour.isSelected || undefined}
-      data-testid={`card-${asset.id}`}
-      data-asset-type="audio"
-      onClick={behaviour.select}
-      onDoubleClick={() => void behaviour.quickApply()}
-      {...behaviour.dragProps}
-    >
-      <div className="gml-card__audiorow">
-        <button
-          type="button"
-          className="gml-play"
-          aria-label={isPlaying ? "Pause" : "Play"}
-          data-testid={`play-${asset.id}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            // Starting this stops whatever was playing, video included.
-            if (isPlaying) playback.stop(mediaId);
-            else playback.play(mediaId, "audio", "grid", host.resolveUrl(asset, asset.previewFile));
-          }}
-        >
-          {isPlaying ? "❚❚" : "▶"}
-        </button>
-        <span className="gml-card__name" title={nameOf(asset)}>
-          {nameOf(asset)}
-        </span>
-        <FavoriteToggle
-          active={behaviour.isFavorite}
-          onToggle={behaviour.toggleFavorite}
-          label={nameOf(asset)}
-        />
-      </div>
-      <Waveform peaks={peaks} progress={progress} />
-      <div className="gml-card__row">
-        <span className="gml-card__duration">{duration(asset.duration)}</span>
+        {/* One wrapping row for everything secondary, so labels never collide. */}
         <span className="gml-card__tags">
-          {/* kind is frequently repeated in tags — show each label once. */}
-          {[...new Set([asset.kind, ...asset.tags].filter(Boolean))].slice(0, 2).join(" · ")}
+          {density === "list" && <FetchBadge state={fetchState} compact />}
+          {asset.kind === "comp" && <Tag>{t("kindComp")}</Tag>}
+          {asset.status === "draft" && <Tag tone="warn" testId="draft-tag">{t("draft")}</Tag>}
+          {oversized && <Tag tone="warn" testId="rerender-tag">{t("needsRerender")}</Tag>}
+          {updateAvailable(asset) && <Tag tone="accent" testId="update-tag">{t("updateAvailable")}</Tag>}
+          {asset.kind === "comp" && readiness.status !== "safe" && <StatusBadge readiness={readiness} />}
         </span>
       </div>
     </article>
-  );
-}
-
-/** Branches on assetType — audio is never rendered as a motion card. */
-export function AssetCard({ asset, density }: { asset: GmlAsset; density?: CardDensity }) {
-  return isAudioAsset(asset) ? (
-    <AudioCard asset={asset} density={density} />
-  ) : (
-    <MotionCard asset={asset} density={density} />
   );
 }
 
@@ -193,23 +99,23 @@ function EmptyState() {
   );
 }
 
-export function AssetGrid({ assets }: { assets: readonly GmlAsset[] }) {
+export function AssetGrid({ assets }: { assets: readonly LibraryAsset[] }) {
   if (assets.length === 0) return <EmptyState />;
   return (
     <div className="gml-grid" data-testid="asset-grid">
       {assets.map((asset) => (
-        <AssetCard key={`${asset.id}@${asset.version}`} asset={asset} density="grid" />
+        <AssetCard key={assetKey(asset.id, asset.version)} asset={asset} density="grid" />
       ))}
     </div>
   );
 }
 
-export function AssetList({ assets }: { assets: readonly GmlAsset[] }) {
+export function AssetList({ assets }: { assets: readonly LibraryAsset[] }) {
   if (assets.length === 0) return <EmptyState />;
   return (
     <div className="gml-list" data-testid="asset-list">
       {assets.map((asset) => (
-        <AssetCard key={`${asset.id}@${asset.version}`} asset={asset} density="list" />
+        <AssetCard key={assetKey(asset.id, asset.version)} asset={asset} density="list" />
       ))}
     </div>
   );

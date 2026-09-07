@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LOCALE, assetName, directionFor, formatDuration, t } from "./i18n.js";
-import { motionFixture } from "./fixtures.js";
+import { assetFixture } from "./fixtures.js";
 
 describe("locale", () => {
   it("defaults to English", () => {
@@ -21,14 +21,14 @@ describe("locale", () => {
 
 describe("asset names", () => {
   it("picks the name for the active locale", () => {
-    const asset = motionFixture();
+    const asset = assetFixture({ id: "x/y", name: "Fade Up Title", nameAr: "عنوان يظهر للأعلى", category: "transitions" });
     expect(assetName(asset, "en")).toBe("Fade Up Title");
     expect(assetName(asset, "ar")).toBe("عنوان يظهر للأعلى");
   });
 
   it("falls back to the other locale when one side is blank", () => {
-    expect(assetName(motionFixture({ nameAr: "" }), "ar")).toBe("Fade Up Title");
-    expect(assetName(motionFixture({ nameEn: " " }), "en")).toBe("عنوان يظهر للأعلى");
+    expect(assetName({ name: "Fade Up Title" }, "ar")).toBe("Fade Up Title");
+    expect(assetName({ name: " ", nameAr: "عنوان يظهر للأعلى" }, "en")).toBe("عنوان يظهر للأعلى");
   });
 });
 

@@ -1,25 +1,36 @@
-import type { GmlAsset } from "./schema.js";
+import type { LibraryAsset } from "./library.js";
 import type { Category } from "./categories.js";
 
 /**
  * Search runs client-side over the cached index — Drive offers no server-side
  * query. Normalisation matters more than ranking sophistication here: a
- * designer typing "انيميشن" must match "أنيميشن".
+ * designer typing "انيميشن" must match "أنيميشن", and "62" must match "٦٢".
  */
 
+// Written as escapes on purpose: raw characters here once produced a range
+// that swallowed the whole Arabic letter block, and every Arabic query
+// silently matched everything.
 const ARABIC_DIACRITICS = /[ؐ-ًؚ-ٰٟۖ-ۭ]/g;
 const TATWEEL = /ـ/g;
 
+/** Arabic-Indic (٠-٩) and Eastern Arabic-Indic (۰-۹) digits to ASCII. */
+export function normalizeDigits(input: string): string {
+  return input.replace(/[٠-٩۰-۹]/g, (d) => {
+    const code = d.charCodeAt(0);
+    return String((code >= 0x06f0 ? code - 0x06f0 : code - 0x0660) % 10);
+  });
+}
+
 export function normalize(input: string): string {
-  return input
+  return normalizeDigits(input)
     .toLowerCase()
     .replace(ARABIC_DIACRITICS, "")
     .replace(TATWEEL, "")
-    .replace(/[آأإٱ]/g, "ا") // آ أ إ ٱ -> ا
-    .replace(/ى/g, "ي") // ى -> ي
-    .replace(/ة/g, "ه") // ة -> ه
-    .replace(/ؤ/g, "و") // ؤ -> و
-    .replace(/ئ/g, "ي") // ئ -> ي
+    .replace(/[آأإٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
@@ -29,7 +40,6 @@ export interface SearchFilters {
   category?: Category | "all";
   favorites?: ReadonlySet<string>;
   onlyFavorites?: boolean;
-  /** Hides the audio category wholesale — Illustrator uses this. */
   hiddenCategories?: readonly Category[];
 }
 
@@ -38,16 +48,16 @@ export interface SearchOptions extends SearchFilters {
 }
 
 interface Scored {
-  asset: GmlAsset;
+  asset: LibraryAsset;
   score: number;
 }
 
-function scoreAsset(asset: GmlAsset, terms: string[]): number {
+function scoreAsset(asset: LibraryAsset, terms: string[]): number {
   if (terms.length === 0) return 1;
 
-  const name = normalize(`${asset.nameEn} ${asset.nameAr}`);
+  const name = normalize(`${asset.name} ${asset.nameAr ?? ""}`);
   const tags = normalize(asset.tags.join(" "));
-  const rest = normalize(`${asset.description} ${asset.category}`);
+  const rest = normalize(`${asset.categoryFolder} ${asset.category} ${asset.kind} ${asset.id}`);
 
   let total = 0;
   for (const term of terms) {
@@ -63,10 +73,7 @@ function scoreAsset(asset: GmlAsset, terms: string[]): number {
   return total;
 }
 
-export function searchAssets(
-  assets: readonly GmlAsset[],
-  options: SearchOptions = {},
-): GmlAsset[] {
+export function searchAssets(assets: readonly LibraryAsset[], options: SearchOptions = {}): LibraryAsset[] {
   const { query = "", category = "all", favorites, onlyFavorites, hiddenCategories } = options;
   const terms = normalize(query).split(" ").filter(Boolean);
   const hidden = new Set(hiddenCategories ?? []);
@@ -84,7 +91,7 @@ export function searchAssets(
   scored.sort(
     (a, b) =>
       b.score - a.score ||
-      a.asset.nameEn.localeCompare(b.asset.nameEn, "en", { sensitivity: "base" }),
+      normalize(a.asset.name).localeCompare(normalize(b.asset.name), ["ar", "en"], { numeric: true, sensitivity: "base" }),
   );
   return scored.map((s) => s.asset);
 }

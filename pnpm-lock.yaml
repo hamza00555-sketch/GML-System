@@ -146,9 +146,6 @@ importers:
       '@gml/core':
         specifier: workspace:*
         version: link:../core
-      '@gml/preflight':
-        specifier: workspace:*
-        version: link:../preflight
       '@gml/storage':
         specifier: workspace:*
         version: link:../storage

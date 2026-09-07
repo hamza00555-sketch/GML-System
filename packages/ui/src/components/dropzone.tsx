@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { GmlAsset, StringKey } from "@gml/core";
+import { assetKey, type LibraryAsset, type StringKey } from "@gml/core";
 import { useI18n } from "../i18n.js";
 import { useHost, type HostTarget } from "../host.js";
 import { useLibrary } from "../library.js";
@@ -28,7 +28,6 @@ function useTarget(): HostTarget {
           // A host that cannot answer just leaves the last known target shown.
         });
     };
-
     poll();
     // The host gives us no selection-changed event, so a light poll keeps the
     // label honest while the panel is open.
@@ -58,10 +57,10 @@ function targetLabel(target: HostTarget, t: (key: StringKey) => string): string 
 }
 
 export function DropZone({ compact = false }: { compact?: boolean }) {
-  const { t } = useI18n();
+  const { t, nameOf } = useI18n();
   const host = useHost();
   const { all, markUsed } = useLibrary();
-  const { queue, enqueue, dequeue, clearQueue, applyNow, applying } = useSelection();
+  const { queue, enqueue, dequeue, clearQueue, applyNow, applying, applyProgress, lastResult } = useSelection();
   const target = useTarget();
   const [over, setOver] = useState(false);
 
@@ -72,16 +71,13 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
     setOver(false);
     const payload = e.dataTransfer.getData(DRAG_MIME);
     if (!payload) return;
-    const [id, version] = payload.split("@");
-    const asset: GmlAsset | undefined = all.find(
-      (a) => a.id === id && (!version || a.version === version),
-    );
+    const asset: LibraryAsset | undefined = all.find((a) => assetKey(a.id, a.version) === payload);
     if (asset) enqueue(asset);
   };
 
   return (
     <footer className="gml-dock" data-compact={compact || undefined} data-testid="dropzone">
-      <p className="gml-dock__target" data-testid="dock-target">
+      <p className="gml-dock__target" data-testid="dock-target" dir="auto">
         {targetLabel(target, t)}
       </p>
 
@@ -108,12 +104,8 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
         <ol className="gml-queue" data-testid="queue">
           {queue.map((item) => (
             <li key={item.key} className="gml-queue__item">
-              <span>{item.asset.nameEn}</span>
-              <button
-                type="button"
-                aria-label={`Remove ${item.asset.nameEn}`}
-                onClick={() => dequeue(item.key)}
-              >
+              <span dir="auto">{nameOf(item.asset)}</span>
+              <button type="button" aria-label={`Remove ${nameOf(item.asset)}`} onClick={() => dequeue(item.key)}>
                 ×
               </button>
             </li>
@@ -126,10 +118,21 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
         </ol>
       )}
 
+      {applyProgress && (
+        <p className="gml-dock__progress" data-testid="apply-progress" dir="auto">
+          {t("stateFetching")} {applyProgress.index + 1}/{applyProgress.count} · {nameOf(applyProgress.asset)}
+        </p>
+      )}
+      {!applying && lastResult && !lastResult.ok && lastResult.message && (
+        <p className="gml-dock__error" role="alert" data-testid="apply-error">
+          {lastResult.message}
+        </p>
+      )}
+
       <button
         type="button"
         className="gml-primary gml-primary--wide"
-        disabled={applying}
+        disabled={applying || queue.length === 0}
         data-testid="dock-apply"
         onClick={() => {
           const assets = queue.map((q) => q.asset);
